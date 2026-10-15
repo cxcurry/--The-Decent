@@ -25,6 +25,7 @@ import { CURRENT_EDITION, TIERS, ZONES, zoneFor } from "@/lib/types";
 import { dayNumber } from "@/lib/daily";
 import Environment from "./environment";
 import DescentScene from "./descent-scene";
+import FullscreenButton from "./fullscreen-button";
 type Page = "daily" | "history" | "how" | "settings";
 const format = (n: number) => n.toLocaleString("en-US");
 function countdown(ms: number) {
@@ -271,14 +272,19 @@ export default function Game() {
   return (
     <MotionConfig reducedMotion={reduced ? "always" : "user"}>
       <div
-        className={`app ${reduced ? "reduce-motion" : ""}`}
+        className={`app ${page === "daily" ? "world-page" : "reading-page"} ${reduced ? "reduce-motion" : ""}`}
         style={
           {
             "--zone-darkness": `${Math.min(0.5, (attempt?.score ?? 0) / 1400)}`,
           } as React.CSSProperties
         }
       >
-        <DescentScene ambient score={attempt?.score ?? 0} reduced={reduced} />
+        <DescentScene
+          score={attempt?.score ?? 0}
+          reduced={reduced}
+          active={!!attempt}
+        />
+        <FullscreenButton />
         {page === "daily" && round?.resolved && round.points > 0 && (
           <div
             key={`${attempt?.day}-${round.number}`}

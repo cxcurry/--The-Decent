@@ -2,7 +2,9 @@
 import { motion } from "motion/react";
 import { memo } from "react";
 import { ZONES, zoneFor } from "@/lib/types";
-import DescentScene from "./descent-scene";
+
+// Telemetry floats over the single viewport-sized world, rather than enclosing
+// another copy of the artwork in a separate panel.
 function Environment({
   score = 0,
   compact = false,
@@ -14,21 +16,31 @@ function Environment({
 }) {
   const depth = score * 10;
   return (
-    <div
-      className={`environment immersive-environment ${compact ? "environment-compact" : ""}`}
-      role="img"
+    <aside
+      className={`environment world-telemetry ${compact ? "environment-compact" : ""}`}
       aria-label={`Descent environment: ${depth} meters, ${zoneFor(score)}`}
     >
-      <DescentScene score={score} reduced={reduced} />
-      <div className="scene-scanline" />
       <div className="coordinate top-left">
-        EXPEDITION / CORE—07
+        <span className="signal-dot" /> LIVE FROM THE UNKNOWN
         <br />
-        PROBE CONNECTED · LIVE FEED
+        CORE / EXPLORER 07
       </div>
-      <div className="coordinate top-right">
-        <span className="signal-dot" />{" "}
-        {score ? "DESCENDING" : "AWAITING DESCENT"}
+      <div className="probe-lock" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+        <span>
+          EXPLORER 07
+          <br />
+          <b>LINK STABLE</b>
+        </span>
+      </div>
+      <div className="sonar-display" aria-hidden="true">
+        <i />
+        <span />
+        <b />
+        <em />
       </div>
       <div className="scene-location">
         <span className="scene-crosshair">+</span>
@@ -59,7 +71,7 @@ function Environment({
           <motion.div
             className="rail-marker"
             animate={{ top: `${(score / 700) * 100}%` }}
-            transition={{ duration: reduced ? 0 : 1.8 }}
+            transition={{ duration: reduced ? 0 : 2.5 }}
           >
             <span />
             YOU
@@ -67,10 +79,10 @@ function Environment({
         </div>
       </div>
       <div className="environment-bottom">
-        <span>↓ EXPLORE THE UNKNOWN</span>
-        <span>{String(depth).padStart(4, "0")} M</span>
+        <span>↓ INTO THE UNKNOWN</span>
+        <span>EXPEDITION / 07</span>
       </div>
-    </div>
+    </aside>
   );
 }
 export default memo(Environment);

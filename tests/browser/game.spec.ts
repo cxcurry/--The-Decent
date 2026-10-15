@@ -272,6 +272,25 @@ test("the expedition scene animates and reduced motion produces a static scene",
     page.getByRole("button", { name: "START DESCENT", exact: true }),
   ).toBeVisible();
   const scene = page.locator(".descent-scene");
+  await expect(scene).toHaveCount(1);
+  const viewport = page.viewportSize()!;
+  await expect
+    .poll(() => scene.boundingBox())
+    .toEqual({
+      x: 0,
+      y: 0,
+      width: viewport.width,
+      height: viewport.height,
+    });
+  // The world stays attached to the viewport even when the content scrolls.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await scene.boundingBox()).toEqual({
+    x: 0,
+    y: 0,
+    width: viewport.width,
+    height: viewport.height,
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
   async function fingerprint() {
     return scene.evaluate((node) => {
       const c = node as HTMLCanvasElement;
@@ -301,4 +320,43 @@ test("the expedition scene animates and reduced motion produces a static scene",
   // This wait tests the promised absence of animation, rather than page readiness.
   await page.waitForTimeout(450);
   expect(await fingerprint()).toBe(still);
+});
+
+test("full screen can be entered and exited without restarting the expedition", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "mobile",
+    "Phone fullscreen support varies by browser; the world fills its viewport without this API.",
+  );
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "START DESCENT", exact: true })
+    .click();
+  const answer = page.getByRole("textbox", {
+    name: "YOUR ANSWER",
+    exact: true,
+  });
+  await expect(answer).toBeEnabled();
+  await answer.fill("draft survives");
+  await expect(page.getByText("Answer saved", { exact: true })).toBeVisible();
+  const before: GameView = await (await page.request.get("/api/game")).json();
+  await page
+    .getByRole("button", { name: "Enter full screen", exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => !!document.fullscreenElement))
+    .toBe(true);
+  await page
+    .getByRole("button", { name: "Exit full screen", exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => !!document.fullscreenElement))
+    .toBe(false);
+  await expect(answer).toHaveValue("draft survives");
+  const after: GameView = await (await page.request.get("/api/game")).json();
+  expect(after.attempt!.rounds.at(-1)!.deadline).toBe(
+    before.attempt!.rounds.at(-1)!.deadline,
+  );
+  expect(after.attempt!.score).toBe(before.attempt!.score);
 });
