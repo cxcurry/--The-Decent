@@ -78,7 +78,7 @@ curl.exe --fail --location https://raw.githubusercontent.com/cxcurry/--The-Decen
 .\UPDATE-CORE.cmd
 ```
 
-The expedition now fills the **entire viewport** with one original procedural Canvas world. Projected, faceted cavern walls pass the camera; mineral veins glow; refracted light beams sway; translucent jellyfish pulse and trail moving tentacles; fish schools, a gliding ray, kelp, currents, bubbles and marine snow move independently. The larger exploration probe has a tether, articulated arms, counter-rotating thrusters, exhaust bubbles, glass cockpit, sweeping searchlights and expanding sonar rings. Starting triggers a launch surge; earned points produce a faster camera dive and longer particle trails. Lighting shifts from turquoise to blue and violet with real score depth. Questions and telemetry float over the environment, rather than enclosing it in a small panel. The full-screen button uses the browser Fullscreen API where supported; Escape exits. Phones keep the full-viewport world and stack readable controls over it.
+The expedition fills the **entire viewport** with one original procedural Canvas world. The submarine descends through continuous vertical geography: **sunlit reef → twilight forest → luminous gardens → sunken city → hydrothermal fields → crystal chasm → core sanctuary**. Terrain, coral, kelp, fish schools, jellyfish, ruins, vents, crystals and kilometer gates are attached to stable depths in meters. As score increases, those same objects move upward past the ship and remain above it, with three parallax layers. Between answers the geography holds its position while wildlife and lights continue moving. Every 100 meters has a world-space ruler tick, large kilometer gates pass through the view, surface light recedes, and water colors blend at biome boundaries. A glowing core marks the final destination. The larger probe retains its articulated arms, thrusters, cockpit, sweeping lights, sonar and point-scaled dive reactions. Questions and telemetry float over the world. The full-screen button uses the browser Fullscreen API where supported; Escape exits.
 
 Rendering runs independently of the authoritative game timer, caps pixel density, targets 30 fps on phones and up to 60 fps on desktop, adapts expensive desktop frames to 30 fps, skips painting in hidden tabs, and draws a static frame with reduced motion enabled. No external image/video assets, WebGL requirement or additional dependencies are needed. The animation update preserves the current edition, active attempts and previous results. Browser coverage verifies actual changing pixels, full-viewport coverage even after scrolling, static reduced-motion rendering, and entering/exiting browser full screen. Windows helper behavior still needs testing on an actual Windows machine; game/browser validation here uses Linux Chromium.
 
@@ -95,7 +95,7 @@ Each newly accepted answer starts a short transition through the full-screen wor
 | 85 | 850 m | Abyssal surge | 2.9 s |
 | 100 | 1,000 m | CORE surge | 3.3 s |
 
-Higher rewards increase camera shake/zoom, submarine pitch and thrust, particle trails, pressure waves, kelp displacement, and the distance fish, jellyfish and rays scatter from the probe. One shared timeline controls physical depth and the animated depth instrument. Reduced motion shows a static destination confirmation for 650 ms, with no shake or animated wildlife reaction.
+Higher rewards increase camera shake/zoom, submarine pitch and thrust, particle trails, pressure waves, kelp displacement, and the distance fish and jellyfish scatter from the probe. One shared timeline controls physical depth and the animated depth instrument. Reduced motion shows a static destination confirmation for 650 ms, with no shake or animated wildlife reaction.
 
 Sound remains opt-in through **SOUND OFF / SOUND ON** in the lower-left corner or **Settings → Discovery sound**. The soundscape is synthesized locally with Web Audio: engine sweeps, filtered water rush, sonar voices, and a deeper impact for high tiers. Higher tiers have longer, fuller and louder sound, with bounded gain and a compressor. A user gesture unlocks browser audio. Muting stops the current sound. Reloading a reveal, refocusing, duplicate responses, and history navigation do not replay rewards; passed or unrecognized answers do not trigger a dive. No audio files, paid services, extra dependencies, database migrations, or new editorial editions are required.
 
@@ -103,12 +103,15 @@ Tests cover reward scaling, exact depth endpoints, event deduplication, full des
 
 ## Preview after finishing the daily game
 
+The **PREVIEW FULL JOURNEY** button runs a 21-second, steady descent from 0 to 7,000 meters through all seven ecosystems, using the same scenery as real play. **END PREVIEW** stops it early. It preserves scores and history, returns to the previous scroll position/focus, and respects sound and reduced-motion settings.
+
 The **Try the dive effects** panel appears below the buttons on today's results and in Settings. All six score tiers can be previewed repeatedly, even after completing the daily challenge. Previews use the same world, motion and audio profiles as earned rewards, are explicitly labeled PREVIEW, run from the surface to the selected tier's depth, then return to the saved scene. They never send a game mutation, change scores/history/streaks, reset cookies, or create another daily attempt. Sound and reduced-motion preferences apply. Previews are disabled while a question timer is running; they cannot pause or extend it. The daily challenge still resets at midnight America/New_York, rather than 24 hours after a player finishes.
 
 ## Source map
 
 - `app/` — page, global styling, HTTP game/history endpoints
 - `components/` — complete game interface and original animated Canvas expedition environment
+- `lib/ocean.ts`, `components/ocean-world.ts` — depth-anchored geography, biome palettes and original scenery
 - `lib/dive.ts`, `lib/dive-audio.ts` — shared reward tiers/timeline and procedural sound design
 - `lib/game.ts` — transactional game state machine, history, statistics
 - `lib/daily.ts` — New York day keys and DST-safe reset scheduling

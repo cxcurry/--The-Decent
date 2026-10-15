@@ -3615,7 +3615,7 @@ main,
 }
 .dive-in-progress .results,
 .dive-in-progress .settings-page {
-  opacity: 0.04;
+  opacity: 0;
   pointer-events: none;
 }
 @media (max-width: 760px) {
@@ -3632,5 +3632,138 @@ main,
 @media (max-width: 360px) {
   .preview-tiers {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dive-biome {
+  margin: 22px 0 0;
+}
+.dive-biome b {
+  display: block;
+  color: #e4fff2;
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+}
+.dive-biome > span {
+  display: block;
+  margin-top: 8px;
+  font: 8px/1.6 var(--mono);
+  color: #a2c4c5;
+}
+.journey-route {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22px;
+  font: 6px var(--mono);
+  color: #66848c;
+}
+.journey-route > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.journey-route i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4c6b77;
+}
+.journey-route .visited {
+  color: #d1ffeb;
+}
+.journey-route .visited i {
+  background: #9bf1d3;
+  box-shadow: 0 0 8px #97ffe077;
+}
+.journey-preview-button {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  margin: 0 0 15px;
+  text-align: left;
+  border: 1px solid #9ef1d580;
+  background: linear-gradient(110deg, #1f675d6e, #1e38554d);
+  color: #e2fff2;
+  font: 10px var(--mono);
+  letter-spacing: 1px;
+}
+.journey-preview-button > span {
+  float: right;
+  color: #9fcfc7;
+  font-size: 8px;
+}
+.end-dive-preview {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  padding: 14px 18px;
+  min-height: 44px;
+  background: #041b27dc;
+  border: 1px solid #9ee9d755;
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+  color: #d4ffef;
+}
+@media (max-width: 760px) {
+  .dive-instruments {
+    top: auto;
+    bottom: 78px;
+    padding: 14px 18px;
+    background: linear-gradient(110deg, #031522c9, #03152278);
+  }
+  .dive-depth {
+    margin: 12px 0 8px;
+  }
+  .dive-depth strong {
+    font-size: 52px;
+  }
+  .dive-pull {
+    font-size: 8px;
+  }
+  .dive-biome {
+    margin-top: 10px;
+  }
+  .dive-biome b {
+    font-size: 18px;
+  }
+  .dive-biome > span {
+    font-size: 6px;
+    margin-top: 6px;
+  }
+  .journey-route {
+    margin-top: 10px;
+  }
+  .dive-track {
+    margin-top: 12px;
+  }
+  .dive-distance {
+    margin: 10px 0 12px;
+    font-size: 9px;
+  }
+  .dive-instruments > small {
+    font-size: 6px;
+  }
+  .journey-preview-button > span {
+    float: none;
+    display: block;
+    margin-top: 9px;
+  }
+  .end-dive-preview {
+    bottom: 10px;
+    padding: 12px 14px;
+    font-size: 7px;
+  }
+}
+@media (max-width: 760px) and (max-height: 740px) {
+  .dive-biome > span,
+  .dive-distance {
+    display: none;
+  }
+  .dive-instruments > small {
+    display: block;
+    margin-top: 12px;
   }
 }

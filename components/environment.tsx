@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "motion/react";
 import { memo } from "react";
+import { oceanLayer } from "@/lib/ocean";
 import { ZONES, zoneFor } from "@/lib/types";
 
 // Telemetry floats over the single viewport-sized world, rather than enclosing
@@ -47,7 +48,8 @@ function Environment({
         <span>
           {zoneFor(score)}
           <small>
-            {String(depth).padStart(4, "0")} METERS BELOW THE SURFACE
+            {oceanLayer(depth).name.toUpperCase()} ·{" "}
+            {String(depth).padStart(4, "0")} M
           </small>
         </span>
       </div>

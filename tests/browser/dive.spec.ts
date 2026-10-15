@@ -201,3 +201,42 @@ test("settings previews do not start a daily attempt and are unavailable during 
   ).json();
   expect(stillActive.attempt).toEqual(active.attempt);
 });
+
+test("the full journey passes distinct scenery and can be stopped without affecting daily play", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  if (info.project.name === "mobile")
+    await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: /PREVIEW FULL JOURNEY/ }).click();
+  const transition = page.locator('.dive-transition[data-journey="true"]');
+  await expect(transition).toBeVisible();
+  await expect(page.locator(".dive-biome b")).toHaveText("Sunlit reef");
+  if (info.project.name === "desktop") {
+    const names = [
+      "Twilight forest",
+      "Luminous gardens",
+      "The sunken city",
+      "Hydrothermal fields",
+      "Crystal chasm",
+      "The core sanctuary",
+    ];
+    for (const name of names)
+      await expect(page.locator(".dive-biome b")).toHaveText(name, {
+        timeout: 6000,
+      });
+    await expect(transition).toHaveCount(0, { timeout: 6000 });
+  } else {
+    await page
+      .getByRole("button", { name: "END PREVIEW", exact: true })
+      .click();
+    await expect(transition).toHaveCount(0);
+  }
+  const game: GameView = await (await page.request.get("/api/game")).json();
+  expect(game.attempt).toBeNull();
+  expect(game.stats.completed).toBe(0);
+  await expect(
+    page.getByRole("heading", { name: "Your atmosphere." }),
+  ).toBeVisible();
+});

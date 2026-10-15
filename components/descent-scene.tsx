@@ -1,5 +1,7 @@
 "use client";
 import { memo, useEffect, useRef } from "react";
+import { drawOceanWorld } from "./ocean-world";
+import { oceanLayer } from "@/lib/ocean";
 import {
   diveDepth,
   diveEnvelope,
@@ -8,7 +10,7 @@ import {
 } from "@/lib/dive";
 
 // Original, resolution-independent procedural world. A single renderer spans the
-// viewport; projected cavern geometry and wildlife share the same camera.
+// viewport; continuous vertical geography and wildlife share the same depth.
 function DescentScene({
   score,
   reduced,
@@ -145,11 +147,7 @@ function DescentScene({
       }
       const surge = reduced ? 0 : envelope * (0.35 + intensity * 2.2) + s.boost;
       if (!reduced) journey += dt * (0.09 + surge * 0.65);
-      const travel = journey + s.depth / 900,
-        deep = s.depth / 7000;
-      const hue = 191 + deep * 64;
-      const accent =
-        deep > 0.74 ? "169,125,255" : deep > 0.38 ? "78,163,255" : "64,231,225";
+      const accent = oceanLayer(s.depth).accent;
       const cx =
         w * (mobile ? 0.61 : 0.72) +
         lookX * 22 +
@@ -158,14 +156,9 @@ function DescentScene({
         h * (mobile ? 0.32 : 0.45) +
         lookY * 15 +
         Math.cos(clock * 0.21) * h * 0.012;
-      const unit = Math.min(w, h),
-        radius = Math.max(w, h) * 0.72;
+      const unit = Math.min(w, h);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const sky = ctx.createLinearGradient(0, 0, w, h);
-      sky.addColorStop(0, `hsl(${hue} 72% 9%)`);
-      sky.addColorStop(0.55, `hsl(${hue + 12} 73% 13%)`);
-      sky.addColorStop(1, "#01050e");
-      ctx.fillStyle = sky;
+      ctx.fillStyle = "#03111d";
       ctx.fillRect(0, 0, w, h);
       // A scored dive pushes and banks the world camera. Instruments stay still.
       ctx.save();
@@ -175,244 +168,20 @@ function DescentScene({
         cx + Math.sin(clock * 73) * shake,
         cy + Math.cos(clock * 61) * shake * 0.7,
       );
-      ctx.rotate(Math.sin(clock * 11) * 0.004 * surge);
-      ctx.scale(1 + surge * 0.05, 1 + surge * 0.05);
+      ctx.rotate(Math.sin(clock * 11) * 0.002 * surge);
+      ctx.scale(1 + surge * 0.02, 1 + surge * 0.02);
       ctx.translate(-cx, -cy);
-      glow(cx, cy, unit * 0.63, accent, 0.45);
-      glow(w * 0.85, h * 0.06, unit * 0.75, "33,123,220", 0.3);
-      // Broad refracted sunlight: independently swaying volumetric beams.
-      ctx.globalCompositeOperation = "screen";
-      for (let i = 0; i < 9; i++) {
-        const x =
-          w * (0.15 + i * 0.12) + Math.sin(clock * 0.13 + i) * w * 0.035;
-        const light = ctx.createLinearGradient(x, 0, x - w * 0.25, h);
-        light.addColorStop(
-          0,
-          `rgba(104,213,244,${(0.08 + Math.sin(clock * 0.3 + i) * 0.025) * (1 - deep * 0.65)})`,
-        );
-        light.addColorStop(1, "rgba(40,132,240,0)");
-        path(
-          [
-            [x, 0],
-            [x + w * 0.035, 0],
-            [x - w * 0.14, h],
-            [x - w * 0.45, h],
-          ],
-          light,
-        );
-      }
-      ctx.globalCompositeOperation = "source-over";
-      // Connected 3D cavern rings. Faceted surfaces pass the camera rather than
-      // sliding a flat background; far geometry is naturally smaller and hazier.
-      const segments = mobile ? 22 : 32,
-        rings = mobile ? 12 : 17;
-      const points: { x: number; y: number }[][] = [];
-      const phase = mod(travel, 1);
-      const cell = Math.floor(travel);
-      for (let k = 0; k <= rings; k++) {
-        const z = 1 + (rings - k - phase) * 0.42;
-        const r = radius / z;
-        const bendX = Math.sin((rings - k + cell) * 0.25) * r * 0.16;
-        const bendY = Math.cos((rings - k + cell) * 0.22) * r * 0.12;
-        points[k] = Array.from({ length: segments }, (_, j) => {
-          const a = (j / segments) * tau;
-          const rough =
-            1 +
-            0.13 * Math.sin(j * 2.9 + (rings - k + cell) * 0.6) +
-            noise(j * 11 + (rings - k + cell) * 17) * 0.13;
-          return {
-            x: cx + Math.cos(a) * r * rough * 1.22 + bendX,
-            y: cy + Math.sin(a) * r * rough + bendY,
-          };
-        });
-      }
-      ctx.lineWidth = 0.6;
-      for (let k = 0; k < rings; k++)
-        for (let j = 0; j < segments; j++) {
-          const a = points[k][j],
-            b = points[k][(j + 1) % segments],
-            c = points[k + 1][j],
-            d = points[k + 1][(j + 1) % segments];
-          const shade =
-            5 + noise(j * 3 + (rings - k + cell) * 7) * 8 + (1 - k / rings) * 9;
-          const fill = `hsl(${hue + 10 + noise(j) * 18} ${36 + noise(j * 3) * 25}% ${shade}%)`;
-          path(
-            [
-              [a.x, a.y],
-              [b.x, b.y],
-              [c.x, c.y],
-            ],
-            fill,
-          );
-          path(
-            [
-              [b.x, b.y],
-              [d.x, d.y],
-              [c.x, c.y],
-            ],
-            `hsl(${hue + 5} 45% ${shade * 0.75}%)`,
-          );
-          // Mineral veins, scattered cyan and violet bioluminescent growth.
-          if ((j + k) % 3 === 0) {
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(c.x, c.y);
-            ctx.strokeStyle = `rgba(${accent},${0.06 + (1 - k / rings) * 0.18})`;
-            ctx.stroke();
-          }
-          if (noise(j * 13 + (rings - k + cell) * 19) > 0.69) {
-            const x = (a.x + b.x + c.x) / 3,
-              y = (a.y + b.y + c.y) / 3;
-            glow(x, y, 3 + k * 0.8, accent, 0.22);
-            ctx.fillStyle = `rgba(${accent},${0.3 + noise(j + k) * 0.45})`;
-            ctx.fillRect(x, y, 1 + k * 0.13, 1 + k * 0.13);
-          }
-        }
-      // Mist inside the opening preserves depth and the distant vanishing point.
-      glow(cx, cy, radius * 0.25, "19,108,157", 0.32);
-      // Ribbons of current curl around the expedition, each with a separate phase.
-      ctx.globalCompositeOperation = "screen";
-      for (let i = 0; i < 7; i++) {
-        ctx.beginPath();
-        for (let j = 0; j <= 36; j++) {
-          const p = j / 36,
-            a = p * 4.2 + clock * 0.15 + i * 0.8;
-          const r = unit * (0.13 + p * 0.62);
-          const x = cx + Math.cos(a) * r * 1.5,
-            y = cy + Math.sin(a) * r * 0.6;
-          if (j === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = `rgba(${accent},${0.028 + i * 0.004})`;
-        ctx.lineWidth = 1 + (i % 3);
-        ctx.stroke();
-      }
-      ctx.globalCompositeOperation = "source-over";
-      // Schools of fish and translucent jellyfish pass at different distances.
-      for (let i = 0; i < (mobile ? 3 : 6); i++) {
-        let x = mod(noise(i + 91) * w + clock * (9 + i * 2), w + 180) - 90;
-        let y =
-          h * (0.14 + noise(i + 99) * 0.72) + Math.sin(clock * 0.7 + i) * 22;
-        const awayX = x - cx,
-          awayY = y - cy,
-          distance = Math.max(40, Math.hypot(awayX, awayY));
-        x += (awayX / distance) * scatter * 0.7;
-        y += (awayY / distance) * scatter * 0.7;
-        const r = (8 + noise(i + 103) * 15) * (mobile ? 0.65 : 1);
-        const pulse =
-          1 +
-          Math.sin(clock * 1.6 + i + envelope * 3) *
-            (0.1 + intensity * envelope * 0.12);
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.scale(pulse, pulse);
-        glow(0, 0, r * 3, i % 2 ? "173,113,255" : accent, 0.3);
-        const body = ctx.createLinearGradient(0, -r, 0, r * 0.4);
-        body.addColorStop(0, `rgba(${accent},0.55)`);
-        body.addColorStop(1, `rgba(${accent},0.04)`);
-        ctx.fillStyle = body;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, r, r * 0.68, 0, Math.PI, tau);
-        ctx.quadraticCurveTo(0, r * 0.35, -r, 0);
-        ctx.fill();
-        ctx.strokeStyle = `rgba(${accent},0.6)`;
-        ctx.lineWidth = 0.8;
-        for (let tentacle = 0; tentacle < 6; tentacle++) {
-          const tx = (tentacle / 5 - 0.5) * r * 1.5;
-          ctx.beginPath();
-          ctx.moveTo(tx, 0);
-          ctx.bezierCurveTo(
-            tx - 7,
-            r,
-            tx + Math.sin(clock * 1.2 + i + tentacle) * r,
-            r * 1.5,
-            tx + Math.sin(clock + i + tentacle) * r * 0.7,
-            r * 2.6,
-          );
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      for (let school = 0; school < 3; school++)
-        for (let i = 0; i < (mobile ? 8 : 17); i++) {
-          let x =
-            mod(
-              w * noise(school + 71) + clock * (18 + school * 9) + i * 16,
-              w + 160,
-            ) - 80;
-          let y =
-            h * (0.22 + school * 0.25) +
-            Math.sin(clock * 0.5 + i * 0.4) * 20 +
-            noise(i + school * 19) * 50;
-          const awayX = x - cx,
-            awayY = y - cy,
-            distance = Math.max(30, Math.hypot(awayX, awayY));
-          x += (awayX / distance) * scatter * (1 + school * 0.2);
-          y += (awayY / distance) * scatter * 0.65;
-          const r = 2 + school;
-          const tail =
-            Math.sin(clock * 7 + i + envelope * 8) *
-            (3 + envelope * intensity * 4);
-          path(
-            [
-              [x + r, y],
-              [x - r, y - 2],
-              [x - r - 3, y + tail],
-              [x - r, y + 2],
-            ],
-            `rgba(104,192,219,${0.14 + school * 0.05})`,
-          );
-        }
-      // Long kelp fronds occupy the foreground. Bending segments react at
-      // different frequencies so the whole screen feels immersed in currents.
-      for (const side of [-1, 1])
-        for (let i = 0; i < (mobile ? 3 : 6); i++) {
-          const root = side < 0 ? -20 + i * 13 : w + 20 - i * 13;
-          const length = h * (0.2 + noise(i + 35) * 0.4);
-          ctx.beginPath();
-          ctx.moveTo(root, h + 20);
-          for (let j = 1; j <= 22; j++) {
-            const p = j / 22;
-            const x =
-              root +
-              side *
-                Math.sin(p * 3 + clock * (0.35 + i * 0.04) + i) *
-                p *
-                (30 + i * 7 + scatter * 0.35);
-            const y = h + 20 - p * length;
-            ctx.lineTo(x, y);
-          }
-          ctx.strokeStyle = `rgba(45,125,128,${0.14 + i * 0.025})`;
-          ctx.lineWidth = 3 + i;
-          ctx.stroke();
-        }
-      // A distant ray glides silently across the opening, flexing both wings.
-      const rayX = mod(w * 0.8 - clock * 12, w + 240) - 120;
-      const rayY = h * 0.62 + Math.sin(clock * 0.2) * 40;
-      const wing = Math.sin(clock * 1.2) * 14;
-      ctx.save();
-      ctx.translate(
-        rayX + (rayX < cx ? -1 : 1) * scatter * 1.3,
-        rayY + scatter * 0.3,
-      );
-      ctx.scale(mobile ? 0.5 : 0.85, mobile ? 0.5 : 0.85);
-      ctx.beginPath();
-      ctx.moveTo(-18, 0);
-      ctx.bezierCurveTo(-37, -14, -58, -16 + wing, -78, -5 + wing);
-      ctx.quadraticCurveTo(-28, 25, 0, 15);
-      ctx.quadraticCurveTo(28, 25, 78, -5 + wing);
-      ctx.bezierCurveTo(58, -16 + wing, 37, -14, 18, 0);
-      ctx.quadraticCurveTo(0, -20, -18, 0);
-      ctx.fillStyle = "#081f30c9";
-      ctx.fill();
-      ctx.strokeStyle = "#5fc8cb33";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, 12);
-      ctx.quadraticCurveTo(12, 45, Math.sin(clock) * 12, 80);
-      ctx.stroke();
-      ctx.restore();
+      drawOceanWorld(ctx, {
+        width: w,
+        height: h,
+        depth: s.depth,
+        origin: h * (mobile ? 0.27 : 0.44),
+        clock,
+        mobile,
+        lookX,
+        scatter,
+        glow,
+      });
       // Marine snow and bubbles. Their streak length follows the actual dive.
       for (const p of particles.slice(0, mobile ? 110 : 260)) {
         const px = mod(
@@ -450,7 +219,7 @@ function DescentScene({
         h * (mobile ? 0.27 : 0.44) +
         lookY * 10 +
         Math.cos(clock * 0.8) * 14 +
-        envelope * (18 + intensity * 65) +
+        envelope * (12 + intensity * 30) +
         s.boost * 12;
       const size = Math.min(mobile ? 0.7 : 1.35, unit / 620);
       ctx.save();
@@ -658,6 +427,7 @@ function DescentScene({
     paint.current = () => draw(0);
     function resize() {
       const r = element!.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return;
       w = r.width;
       h = r.height;
       mobile = w <= 760;

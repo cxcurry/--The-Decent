@@ -97,3 +97,19 @@ describe("point-scaled dive rewards", () => {
     expect(diveEnvelope(0.4)).toBe(1);
   });
 });
+
+it("full-journey previews visit every kilometer at a steady pace without changing normal reward timing", async () => {
+  const { diveDuration } = await import("../lib/dive");
+  const normal = earnedDive(view(60, false), view(160, true, 100), 0)!;
+  expect(diveDuration(normal)).toBe(3300);
+  const journey = {
+    ...normal,
+    fromDepth: 0,
+    toDepth: 7000,
+    preview: true,
+    journey: true,
+  };
+  expect(diveDuration(journey)).toBe(21000);
+  for (let chapter = 0; chapter <= 7; chapter++)
+    expect(diveDepth(journey, chapter * 3000)).toBeCloseTo(chapter * 1000);
+});

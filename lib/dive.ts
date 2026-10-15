@@ -66,6 +66,7 @@ export type DiveEvent = {
   startedAt: number;
   profile: DiveProfile;
   preview?: boolean;
+  journey?: boolean;
 };
 export function diveProfile(points: number): DiveProfile | null {
   return REWARDS.find((reward) => reward.points === points) ?? null;
@@ -108,15 +109,19 @@ export function earnedDive(
     profile,
   };
 }
+export function diveDuration(dive: DiveEvent) {
+  return dive.journey ? 21000 : dive.profile.duration;
+}
 export function diveProgress(dive: DiveEvent, now: number) {
-  return Math.max(
-    0,
-    Math.min(1, (now - dive.startedAt) / dive.profile.duration),
-  );
+  return Math.max(0, Math.min(1, (now - dive.startedAt) / diveDuration(dive)));
 }
 export function diveDepth(dive: DiveEvent, now: number) {
   const p = diveProgress(dive, now);
-  const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+  const eased = dive.journey
+    ? p
+    : p < 0.5
+      ? 4 * p * p * p
+      : 1 - Math.pow(-2 * p + 2, 3) / 2;
   return dive.fromDepth + (dive.toDepth - dive.fromDepth) * eased;
 }
 export function diveEnvelope(progress: number) {

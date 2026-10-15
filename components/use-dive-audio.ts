@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef } from "react";
-import type { DiveEvent } from "@/lib/dive";
+import { diveDuration, type DiveEvent } from "@/lib/dive";
 import { scheduleDiveSound } from "@/lib/dive-audio";
 
 export function useDiveAudio(enabled: boolean, dive: DiveEvent | null) {
@@ -42,7 +42,11 @@ export function useDiveAudio(enabled: boolean, dive: DiveEvent | null) {
           !document.hidden &&
           performance.now() - dive.startedAt < 400
         )
-          stop = scheduleDiveSound(context, dive.profile);
+          stop = scheduleDiveSound(
+            context,
+            dive.profile,
+            diveDuration(dive) / 1000,
+          );
       })
       .catch(() => {});
     return () => {

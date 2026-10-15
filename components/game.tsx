@@ -30,7 +30,12 @@ import FullscreenButton from "./fullscreen-button";
 import DiveTransition from "./dive-transition";
 import DivePreview from "./dive-preview";
 import { useDiveAudio } from "./use-dive-audio";
-import { diveProfile, earnedDive, type DiveEvent } from "@/lib/dive";
+import {
+  diveDuration,
+  diveProfile,
+  earnedDive,
+  type DiveEvent,
+} from "@/lib/dive";
 type Page = "daily" | "history" | "how" | "settings";
 const format = (n: number) => n.toLocaleString("en-US");
 function countdown(ms: number) {
@@ -88,16 +93,30 @@ export default function Game() {
     score = useCounter(attempt?.score ?? 0, reduced);
   const [dive, setDive] = useState<DiveEvent | null>(null);
   const rewarded = useRef(new Set<string>());
+  const previewOrigin = useRef<HTMLElement | null>(null);
+  const previewScroll = useRef(0);
+  const endPreview = () => {
+    setDive(null);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: previewScroll.current, behavior: "instant" });
+      previewOrigin.current?.focus({ preventScroll: true });
+    });
+  };
   const unlockAudio = useDiveAudio(sound, dive);
   useEffect(() => {
     if (!dive) return;
     const remaining = Math.max(
       0,
-      dive.startedAt +
-        (reduced ? 650 : dive.profile.duration) -
-        performance.now(),
+      dive.startedAt + (reduced ? 650 : diveDuration(dive)) - performance.now(),
     );
-    const timer = setTimeout(() => setDive(null), remaining);
+    const timer = setTimeout(() => {
+      setDive(null);
+      if (dive.preview)
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: previewScroll.current, behavior: "instant" });
+          previewOrigin.current?.focus({ preventScroll: true });
+        });
+    }, remaining);
     return () => clearTimeout(timer);
   }, [dive, reduced]);
   const apply = useCallback((next: GameView) => {
@@ -277,20 +296,26 @@ export default function Game() {
       );
     }
   };
-  const tryDive = (points: number) => {
+  const tryDive = (points: number, journey = false) => {
     if (dive || busy || (attempt?.status === "active" && !round?.resolved))
       return;
     const profile = diveProfile(points);
     if (!profile) return;
     if (sound) unlockAudio();
+    previewScroll.current = window.scrollY;
+    previewOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     const startedAt = performance.now();
     setDive({
       id: `preview/${crypto.randomUUID()}`,
       fromDepth: 0,
-      toDepth: points * 10,
+      toDepth: journey ? 7000 : points * 10,
       startedAt,
       profile,
       preview: true,
+      journey,
     });
     window.scrollTo({ top: 0, behavior: "instant" });
   };
@@ -324,7 +349,12 @@ export default function Game() {
           <span>SOUND {sound ? "ON" : "OFF"}</span>
         </button>
         {diving && (
-          <DiveTransition key={dive.id} dive={dive} reduced={reduced} />
+          <DiveTransition
+            key={dive.id}
+            dive={dive}
+            reduced={reduced}
+            onEnd={dive.preview ? endPreview : undefined}
+          />
         )}
         {page === "daily" && round?.resolved && round.points > 0 && (
           <div
@@ -383,7 +413,7 @@ export default function Game() {
             {mobileMenu ? <X /> : <Menu />}
           </button>
         </header>
-        <main id="main">
+        <main id="main" inert={!!dive?.preview}>
           {error && (
             <div className="error-banner" role="alert">
               {error}
@@ -832,6 +862,7 @@ export default function Game() {
                     next={countdown(data.nextReset - now)}
                     onHistory={() => navigate("history")}
                     onPreview={tryDive}
+                    onJourney={() => tryDive(100, true)}
                     previewDisabled={!!dive || busy}
                   />
                 )}
@@ -966,6 +997,7 @@ export default function Game() {
                   </div>
                   <DivePreview
                     onPreview={tryDive}
+                    onJourney={() => tryDive(100, true)}
                     disabled={!!dive || busy}
                     roundActive={
                       attempt?.status === "active" && !round?.resolved
@@ -1131,6 +1163,7 @@ function Results({
   next,
   onHistory,
   onPreview,
+  onJourney,
   previewDisabled,
 }: {
   entry: HistoryEntry;
@@ -1140,6 +1173,7 @@ function Results({
   next?: string;
   onHistory: () => void;
   onPreview?: (points: number) => void;
+  onJourney?: () => void;
   previewDisabled?: boolean;
 }) {
   return (
@@ -1195,7 +1229,11 @@ function Results({
           </button>
         </div>
         {onPreview && (
-          <DivePreview onPreview={onPreview} disabled={previewDisabled} />
+          <DivePreview
+            onPreview={onPreview}
+            onJourney={onJourney}
+            disabled={previewDisabled}
+          />
         )}
       </div>
       <div className="breakdown">

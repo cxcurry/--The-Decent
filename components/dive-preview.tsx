@@ -3,10 +3,12 @@ import { TIERS } from "@/lib/types";
 
 export default function DivePreview({
   onPreview,
+  onJourney,
   disabled = false,
   roundActive = false,
 }: {
   onPreview: (points: number) => void;
+  onJourney?: () => void;
   disabled?: boolean;
   roundActive?: boolean;
 }) {
@@ -14,6 +16,16 @@ export default function DivePreview({
     <section className="dive-preview" aria-label="Dive effect previews">
       <h2>Try the dive effects.</h2>
       <p>Compare all six reward levels. Previews don’t change your score.</p>
+      {onJourney && (
+        <button
+          className="journey-preview-button"
+          type="button"
+          disabled={disabled || roundActive}
+          onClick={onJourney}
+        >
+          PREVIEW FULL JOURNEY <span>0 → 7,000 M · 21 SECONDS</span>
+        </button>
+      )}
       <div className="preview-tiers">
         {TIERS.map((tier) => (
           <button

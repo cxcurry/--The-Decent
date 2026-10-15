@@ -5,9 +5,9 @@ import type { DiveProfile } from "./dive";
 export function scheduleDiveSound(
   audio: BaseAudioContext,
   profile: DiveProfile,
+  duration = profile.duration / 1000,
 ) {
-  const start = audio.currentTime + 0.015,
-    duration = profile.duration / 1000;
+  const start = audio.currentTime + 0.015;
   const strength = profile.intensity;
   const master = audio.createGain();
   const limiter = audio.createDynamicsCompressor();
