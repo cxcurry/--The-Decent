@@ -1,5 +1,11 @@
 "use client";
 import { memo, useEffect, useRef } from "react";
+import {
+  diveDepth,
+  diveEnvelope,
+  diveProgress,
+  type DiveEvent,
+} from "@/lib/dive";
 
 // Original, resolution-independent procedural world. A single renderer spans the
 // viewport; projected cavern geometry and wildlife share the same camera.
@@ -7,10 +13,12 @@ function DescentScene({
   score,
   reduced,
   active = false,
+  dive = null,
 }: {
   score: number;
   reduced: boolean;
   active?: boolean;
+  dive?: DiveEvent | null;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef({
@@ -20,18 +28,23 @@ function DescentScene({
     y: 0,
     active,
     boost: 0,
+    dive: null as DiveEvent | null,
   });
   const paint = useRef<(() => void) | null>(null);
   useEffect(() => {
     const s = state.current;
     if (active && !s.active) s.boost = 1;
     s.active = active;
+    if (dive && s.dive?.id !== dive.id) s.depth = dive.fromDepth;
+    if ((!dive && s.dive) || (!dive && s.target !== score * 10))
+      s.depth = score * 10;
+    s.dive = dive;
     s.target = score * 10;
     if (reduced) {
       s.depth = s.target;
       paint.current?.();
     }
-  }, [score, reduced, active]);
+  }, [score, reduced, active, dive]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -113,9 +126,14 @@ function DescentScene({
       const s = state.current;
       const dt = last && t > last ? Math.min(0.05, (t - last) / 1000) : 0;
       last = t;
+      const progress = s.dive ? diveProgress(s.dive, performance.now()) : 1;
+      const envelope = reduced ? 0 : diveEnvelope(progress);
+      const intensity = s.dive?.profile.intensity ?? 0;
+      const scatter = (s.dive?.profile.scatter ?? 0) * envelope;
       if (!reduced) {
         clock += dt;
-        s.depth += (s.target - s.depth) * (1 - Math.exp(-dt * 1.65));
+        if (s.dive) s.depth = diveDepth(s.dive, performance.now());
+        else s.depth += (s.target - s.depth) * (1 - Math.exp(-dt * 1.65));
         s.boost *= Math.exp(-dt * 0.7);
         lookX += (s.x - lookX) * (1 - Math.exp(-dt * 2));
         lookY += (s.y - lookY) * (1 - Math.exp(-dt * 2));
@@ -125,9 +143,7 @@ function DescentScene({
         journey = 0;
         lookX = lookY = 0;
       }
-      const surge = reduced
-        ? 0
-        : Math.min(1.8, (s.target - s.depth) / 400 + s.boost);
+      const surge = reduced ? 0 : envelope * (0.35 + intensity * 2.2) + s.boost;
       if (!reduced) journey += dt * (0.09 + surge * 0.65);
       const travel = journey + s.depth / 900,
         deep = s.depth / 7000;
@@ -153,8 +169,13 @@ function DescentScene({
       ctx.fillRect(0, 0, w, h);
       // A scored dive pushes and banks the world camera. Instruments stay still.
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(Math.sin(clock * 2) * 0.006 * surge);
+      const shake =
+        (s.dive?.profile.shake ?? 0) * envelope * (mobile ? 0.6 : 1);
+      ctx.translate(
+        cx + Math.sin(clock * 73) * shake,
+        cy + Math.cos(clock * 61) * shake * 0.7,
+      );
+      ctx.rotate(Math.sin(clock * 11) * 0.004 * surge);
       ctx.scale(1 + surge * 0.05, 1 + surge * 0.05);
       ctx.translate(-cx, -cy);
       glow(cx, cy, unit * 0.63, accent, 0.45);
@@ -269,11 +290,19 @@ function DescentScene({
       ctx.globalCompositeOperation = "source-over";
       // Schools of fish and translucent jellyfish pass at different distances.
       for (let i = 0; i < (mobile ? 3 : 6); i++) {
-        const x = mod(noise(i + 91) * w + clock * (9 + i * 2), w + 180) - 90;
-        const y =
+        let x = mod(noise(i + 91) * w + clock * (9 + i * 2), w + 180) - 90;
+        let y =
           h * (0.14 + noise(i + 99) * 0.72) + Math.sin(clock * 0.7 + i) * 22;
+        const awayX = x - cx,
+          awayY = y - cy,
+          distance = Math.max(40, Math.hypot(awayX, awayY));
+        x += (awayX / distance) * scatter * 0.7;
+        y += (awayY / distance) * scatter * 0.7;
         const r = (8 + noise(i + 103) * 15) * (mobile ? 0.65 : 1);
-        const pulse = 1 + Math.sin(clock * 1.6 + i) * 0.1;
+        const pulse =
+          1 +
+          Math.sin(clock * 1.6 + i + envelope * 3) *
+            (0.1 + intensity * envelope * 0.12);
         ctx.save();
         ctx.translate(x, y);
         ctx.scale(pulse, pulse);
@@ -306,17 +335,24 @@ function DescentScene({
       }
       for (let school = 0; school < 3; school++)
         for (let i = 0; i < (mobile ? 8 : 17); i++) {
-          const x =
+          let x =
             mod(
               w * noise(school + 71) + clock * (18 + school * 9) + i * 16,
               w + 160,
             ) - 80;
-          const y =
+          let y =
             h * (0.22 + school * 0.25) +
             Math.sin(clock * 0.5 + i * 0.4) * 20 +
             noise(i + school * 19) * 50;
+          const awayX = x - cx,
+            awayY = y - cy,
+            distance = Math.max(30, Math.hypot(awayX, awayY));
+          x += (awayX / distance) * scatter * (1 + school * 0.2);
+          y += (awayY / distance) * scatter * 0.65;
           const r = 2 + school;
-          const tail = Math.sin(clock * 7 + i) * 3;
+          const tail =
+            Math.sin(clock * 7 + i + envelope * 8) *
+            (3 + envelope * intensity * 4);
           path(
             [
               [x + r, y],
@@ -342,7 +378,7 @@ function DescentScene({
               side *
                 Math.sin(p * 3 + clock * (0.35 + i * 0.04) + i) *
                 p *
-                (30 + i * 7);
+                (30 + i * 7 + scatter * 0.35);
             const y = h + 20 - p * length;
             ctx.lineTo(x, y);
           }
@@ -355,7 +391,10 @@ function DescentScene({
       const rayY = h * 0.62 + Math.sin(clock * 0.2) * 40;
       const wing = Math.sin(clock * 1.2) * 14;
       ctx.save();
-      ctx.translate(rayX, rayY);
+      ctx.translate(
+        rayX + (rayX < cx ? -1 : 1) * scatter * 1.3,
+        rayY + scatter * 0.3,
+      );
       ctx.scale(mobile ? 0.5 : 0.85, mobile ? 0.5 : 0.85);
       ctx.beginPath();
       ctx.moveTo(-18, 0);
@@ -411,12 +450,17 @@ function DescentScene({
         h * (mobile ? 0.27 : 0.44) +
         lookY * 10 +
         Math.cos(clock * 0.8) * 14 +
-        surge * 12;
+        envelope * (18 + intensity * 65) +
+        s.boost * 12;
       const size = Math.min(mobile ? 0.7 : 1.35, unit / 620);
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(size, size);
-      ctx.rotate(Math.sin(clock * 0.37) * 0.07 + lookX * 0.025);
+      ctx.rotate(
+        Math.sin(clock * 0.37) * 0.07 +
+          lookX * 0.025 +
+          envelope * intensity * 0.18,
+      );
       // Tether disappears into the surface above the frame.
       ctx.beginPath();
       ctx.moveTo(0, -45);
@@ -582,6 +626,15 @@ function DescentScene({
       ctx.textAlign = "center";
       ctx.fillText("CORE / 07", 0, 53);
       ctx.restore();
+      // A spreading pressure wave marks a strong pull without covering the world.
+      if (envelope > 0 && intensity >= 0.4) {
+        const r = unit * (0.1 + progress * (0.9 + intensity * 0.4));
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * 0.6, 0, 0, tau);
+        ctx.strokeStyle = `rgba(${accent},${(1 - progress) * envelope * intensity * 0.45})`;
+        ctx.lineWidth = 1 + intensity * 2;
+        ctx.stroke();
+      }
       ctx.restore();
       // A gradual vignette frames the viewport without hiding its moving edges.
       const vignette = ctx.createRadialGradient(

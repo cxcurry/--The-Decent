@@ -3370,3 +3370,177 @@ main,
     font-size: 26px;
   }
 }
+
+/* The HUD yields to the world for each short, point-scaled reward sequence.
+   Motion sets inline opacity on the panel, so the cinematic override is explicit. */
+.dive-in-progress .expedition-bar {
+  visibility: hidden;
+}
+.dive-in-progress .play-panel {
+  opacity: 0.08 !important;
+  filter: blur(2px);
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+.dive-in-progress .world-telemetry {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.dive-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  background: linear-gradient(90deg, #020b1455, transparent 65%);
+}
+.dive-caption {
+  position: absolute;
+  top: 105px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 40px);
+  text-align: center;
+  font: 9px/1.8 var(--mono);
+  letter-spacing: 2px;
+  color: #c8ffef;
+  text-shadow: 0 2px 10px #000;
+}
+.dive-instruments {
+  position: absolute;
+  top: 39%;
+  left: 7%;
+  width: min(430px, 35vw);
+  color: #c9fff1;
+  padding: 24px;
+  background: linear-gradient(115deg, #031522b8, #03152200);
+  border-left: 2px solid #97ffe69c;
+}
+.dive-pull {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 10px var(--mono);
+  letter-spacing: 2.5px;
+}
+.dive-depth {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 22px 0 17px;
+}
+.dive-depth > svg {
+  align-self: center;
+  width: 24px;
+}
+.dive-depth strong {
+  font-size: clamp(55px, 7vw, 102px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -4px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 60px #6fffea42;
+}
+.dive-depth > span {
+  font: 12px var(--mono);
+}
+.dive-track {
+  height: 2px;
+  background: #7affd822;
+  margin-top: 25px;
+}
+.dive-track i {
+  display: block;
+  height: 100%;
+  background: #a4ffe7;
+  box-shadow: 0 0 15px #91fff4;
+}
+.dive-distance {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 11px var(--mono);
+  margin: 16px 0 30px;
+}
+.dive-distance > span {
+  color: #8cbabb;
+  font-size: 8px;
+  align-self: center;
+}
+.dive-instruments > small {
+  font: 7px var(--mono);
+  letter-spacing: 1px;
+  color: #a1c6cc;
+}
+.dive-transition[data-points="85"] .dive-instruments {
+  color: #dacfff;
+  border-color: #b0a1ff;
+}
+.dive-transition[data-points="100"] .dive-instruments {
+  color: #fff;
+  border-color: #f4ffb3;
+}
+.dive-in-progress.reduce-motion .play-panel {
+  opacity: 0.25 !important;
+  filter: none;
+}
+.world-sound {
+  position: fixed;
+  bottom: 18px;
+  left: 22px;
+  z-index: 30;
+  min-height: 44px;
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #90e7e64d;
+  color: #9abfc3;
+  background: #061320bd;
+  backdrop-filter: blur(12px);
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+}
+.world-sound[aria-pressed="true"] {
+  color: #c8fff0;
+  border-color: #83d7c977;
+}
+@media (max-width: 760px) {
+  .dive-caption {
+    top: 84px;
+    font-size: 7px;
+    letter-spacing: 0.8px;
+  }
+  .dive-instruments {
+    top: 46%;
+    left: 20px;
+    right: 20px;
+    width: auto;
+    max-width: 430px;
+    padding: 22px;
+    background: #031522a6;
+  }
+  .dive-depth strong {
+    font-size: 70px;
+  }
+  .dive-pull {
+    font-size: 9px;
+  }
+  .world-sound {
+    bottom: 10px;
+    left: 12px;
+    padding: 12px;
+  }
+  .world-sound > span {
+    font-size: 6px;
+  }
+}
+@media (max-width: 360px) {
+  .dive-depth strong {
+    font-size: 60px;
+  }
+  .dive-distance {
+    font-size: 9px;
+  }
+}

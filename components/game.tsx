@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   Volume2,
+  VolumeX,
   Waves,
   X,
 } from "lucide-react";
@@ -26,6 +27,9 @@ import { dayNumber } from "@/lib/daily";
 import Environment from "./environment";
 import DescentScene from "./descent-scene";
 import FullscreenButton from "./fullscreen-button";
+import DiveTransition from "./dive-transition";
+import { useDiveAudio } from "./use-dive-audio";
+import { earnedDive, type DiveEvent } from "@/lib/dive";
 type Page = "daily" | "history" | "how" | "settings";
 const format = (n: number) => n.toLocaleString("en-US");
 function countdown(ms: number) {
@@ -81,24 +85,26 @@ export default function Game() {
   const attempt = data?.attempt,
     round = attempt?.rounds.at(-1),
     score = useCounter(attempt?.score ?? 0, reduced);
-  const beep = useCallback(() => {
-    if (!sound) return;
-    try {
-      const audio = new AudioContext();
-      const osc = audio.createOscillator(),
-        gain = audio.createGain();
-      osc.connect(gain);
-      gain.connect(audio.destination);
-      osc.frequency.setValueAtTime(440, audio.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audio.currentTime + 0.16);
-      gain.gain.setValueAtTime(0.035, audio.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.22);
-      osc.start();
-      osc.stop(audio.currentTime + 0.23);
-      osc.onended = () => void audio.close();
-    } catch {}
-  }, [sound]);
+  const [dive, setDive] = useState<DiveEvent | null>(null);
+  const rewarded = useRef(new Set<string>());
+  const unlockAudio = useDiveAudio(sound, dive);
+  useEffect(() => {
+    if (!dive) return;
+    const remaining = Math.max(
+      0,
+      dive.startedAt +
+        (reduced ? 650 : dive.profile.duration) -
+        performance.now(),
+    );
+    const timer = setTimeout(() => setDive(null), remaining);
+    return () => clearTimeout(timer);
+  }, [dive, reduced]);
   const apply = useCallback((next: GameView) => {
+    const reward = earnedDive(stateRef.current, next, performance.now());
+    if (reward && !rewarded.current.has(reward.id)) {
+      rewarded.current.add(reward.id);
+      setDive(reward);
+    }
     if (
       stateRef.current?.attempt?.status === "active" &&
       next.attempt?.status === "complete"
@@ -154,6 +160,7 @@ export default function Game() {
   }, [refresh]);
   const act = useCallback(
     (action: string, value?: string, silent = false) => {
+      if (sound && !silent) unlockAudio();
       const current = stateRef.current?.attempt?.rounds.at(-1);
       if (draftTimer.current && !silent) {
         clearTimeout(draftTimer.current);
@@ -185,8 +192,6 @@ export default function Game() {
               if (next.attempt?.rounds.at(-1)?.resolved) apply(next);
             } else {
               apply(next);
-              if (next.attempt?.rounds.at(-1)?.points && !current?.resolved)
-                beep();
             }
           } catch (e) {
             setError(
@@ -200,7 +205,7 @@ export default function Game() {
       queue.current = task;
       return task;
     },
-    [apply, beep],
+    [apply, sound, unlockAudio],
   );
   useEffect(() => {
     if (data && now >= data.nextReset && resetDay.current !== data.day) {
@@ -222,6 +227,7 @@ export default function Game() {
       input.current?.focus();
   }, [page, round?.number, round?.resolved, preview]);
   const navigate = (next: Page) => {
+    setDive(null);
     setPage(next);
     setMobileMenu(false);
     setSelected(null);
@@ -241,13 +247,16 @@ export default function Game() {
   };
   const saveSetting = (key: "sound" | "reduced", value: boolean) => {
     const settings = { sound, reduced, [key]: value };
-    if (key === "sound") setSound(value);
-    else setReduced(value);
+    if (key === "sound") {
+      if (value) unlockAudio();
+      setSound(value);
+    } else setReduced(value);
     try {
       localStorage.setItem("core-settings", JSON.stringify(settings));
     } catch {}
   };
   const changeText = (value: string) => {
+    if (sound) unlockAudio();
     setText(value);
     setDraftStatus("Saving…");
     if (draftTimer.current) clearTimeout(draftTimer.current);
@@ -269,10 +278,11 @@ export default function Game() {
   };
   const stats = data?.stats;
   const complete = attempt?.status === "complete";
+  const diving = page === "daily" && dive !== null;
   return (
     <MotionConfig reducedMotion={reduced ? "always" : "user"}>
       <div
-        className={`app ${page === "daily" ? "world-page" : "reading-page"} ${reduced ? "reduce-motion" : ""}`}
+        className={`app ${page === "daily" ? "world-page" : "reading-page"} ${reduced ? "reduce-motion" : ""} ${diving ? "dive-in-progress" : ""}`}
         style={
           {
             "--zone-darkness": `${Math.min(0.5, (attempt?.score ?? 0) / 1400)}`,
@@ -283,8 +293,21 @@ export default function Game() {
           score={attempt?.score ?? 0}
           reduced={reduced}
           active={!!attempt}
+          dive={dive}
         />
         <FullscreenButton />
+        <button
+          className="world-sound"
+          aria-label={sound ? "Mute dive sound" : "Enable dive sound"}
+          aria-pressed={sound}
+          onClick={() => saveSetting("sound", !sound)}
+        >
+          {sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          <span>SOUND {sound ? "ON" : "OFF"}</span>
+        </button>
+        {diving && (
+          <DiveTransition key={dive.id} dive={dive} reduced={reduced} />
+        )}
         {page === "daily" && round?.resolved && round.points > 0 && (
           <div
             key={`${attempt?.day}-${round.number}`}
@@ -722,7 +745,7 @@ export default function Game() {
                             </p>
                             <button
                               className="primary"
-                              disabled={busy}
+                              disabled={busy || diving}
                               onClick={() =>
                                 complete
                                   ? setFinalReady(true)
@@ -735,7 +758,9 @@ export default function Game() {
                               <ArrowDown size={18} />
                             </button>
                             <p className="paused-note">
-                              TIMER PAUSED · YOUR NEXT STAGE IS READY
+                              {diving
+                                ? "DIVE IN PROGRESS · TIMER PAUSED"
+                                : "TIMER PAUSED · YOUR NEXT STAGE IS READY"}
                             </p>
                           </div>
                         )}
@@ -889,7 +914,9 @@ export default function Game() {
                     <Volume2 size={23} />
                     <div>
                       <h2>Discovery sound</h2>
-                      <p>A subtle signal when an answer is accepted.</p>
+                      <p>
+                        Engine, water and sonar effects grow with your points.
+                      </p>
                     </div>
                     <button
                       role="switch"

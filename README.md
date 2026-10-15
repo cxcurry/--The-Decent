@@ -82,10 +82,30 @@ The expedition now fills the **entire viewport** with one original procedural Ca
 
 Rendering runs independently of the authoritative game timer, caps pixel density, targets 30 fps on phones and up to 60 fps on desktop, adapts expensive desktop frames to 30 fps, skips painting in hidden tabs, and draws a static frame with reduced motion enabled. No external image/video assets, WebGL requirement or additional dependencies are needed. The animation update preserves the current edition, active attempts and previous results. Browser coverage verifies actual changing pixels, full-viewport coverage even after scrolling, static reduced-motion rendering, and entering/exiting browser full screen. Windows helper behavior still needs testing on an actual Windows machine; game/browser validation here uses Linux Chromium.
 
+## Answer-triggered dive sequences
+
+Each newly accepted answer starts a short transition through the full-screen world. The question panel recedes while a depth instrument counts from the previous depth to the exact earned destination. The server has already locked the answer; Continue remains disabled until the sequence settles. The next question's timer starts only after Continue, so animation never consumes thinking time.
+
+| Points | Descent | Sequence | Duration |
+| --- | --- | --- | --- |
+| 10 | 100 m | Gentle dive | 1.4 s |
+| 15 | 150 m | Steady descent | 1.65 s |
+| 30 | 300 m | Deep dive | 2 s |
+| 60 | 600 m | Power dive | 2.5 s |
+| 85 | 850 m | Abyssal surge | 2.9 s |
+| 100 | 1,000 m | CORE surge | 3.3 s |
+
+Higher rewards increase camera shake/zoom, submarine pitch and thrust, particle trails, pressure waves, kelp displacement, and the distance fish, jellyfish and rays scatter from the probe. One shared timeline controls physical depth and the animated depth instrument. Reduced motion shows a static destination confirmation for 650 ms, with no shake or animated wildlife reaction.
+
+Sound remains opt-in through **SOUND OFF / SOUND ON** in the lower-left corner or **Settings → Discovery sound**. The soundscape is synthesized locally with Web Audio: engine sweeps, filtered water rush, sonar voices, and a deeper impact for high tiers. Higher tiers have longer, fuller and louder sound, with bounded gain and a compressor. A user gesture unlocks browser audio. Muting stops the current sound. Reloading a reveal, refocusing, duplicate responses, and history navigation do not replay rewards; passed or unrecognized answers do not trigger a dive. No audio files, paid services, extra dependencies, database migrations, or new editorial editions are required.
+
+Tests cover reward scaling, exact depth endpoints, event deduplication, full desktop/phone games, mute and reduced-motion behavior, no replay after reload/refocus, and actual OfflineAudioContext waveforms (the CORE reward has greater energy and duration than a Surface reward).
+
 ## Source map
 
 - `app/` — page, global styling, HTTP game/history endpoints
 - `components/` — complete game interface and original animated Canvas expedition environment
+- `lib/dive.ts`, `lib/dive-audio.ts` — shared reward tiers/timeline and procedural sound design
 - `lib/game.ts` — transactional game state machine, history, statistics
 - `lib/daily.ts` — New York day keys and DST-safe reset scheduling
 - `lib/recognition.ts` — canonical answer matching and conservative edit distance
