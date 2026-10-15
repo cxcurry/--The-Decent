@@ -2418,3 +2418,443 @@ svg {
   color: #93accd;
   font: 8px var(--mono);
 }
+/* Live expedition environment: procedural art stays behind readable instruments. */
+.app {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+.ambient-scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100svh;
+  z-index: -3;
+  pointer-events: none;
+  opacity: 0.52;
+}
+.app:before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(5, 8, 14, 0.92),
+    rgba(5, 8, 14, 0.55) 65%,
+    rgba(5, 8, 14, 0.7)
+  );
+  z-index: -2;
+  pointer-events: none;
+}
+.site-header {
+  background: linear-gradient(#080b12a6, #080b1200);
+}
+.immersive-environment {
+  border: 1px solid #29456545;
+  background: #050d19;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 80px #0008,
+    0 20px 100px #00163430;
+  transform: translateZ(0);
+}
+.descent-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.immersive-environment:after {
+  background: linear-gradient(#03091308, transparent 50%, #02050c5c);
+}
+.immersive-environment .coordinate {
+  color: #88a7cc;
+  font-size: 7px;
+  letter-spacing: 1.2px;
+  line-height: 2;
+}
+.immersive-environment .top-left {
+  top: 24px;
+  left: 23px;
+}
+.immersive-environment .top-right {
+  top: 24px;
+  right: 22px;
+  font-size: 6px;
+}
+.immersive-environment .depth-rail {
+  right: 10px;
+  top: 99px;
+  bottom: 83px;
+  width: 45px;
+}
+.immersive-environment .environment-bottom {
+  left: 24px;
+  right: 22px;
+  bottom: 23px;
+  font-size: 7px;
+}
+.scene-location {
+  position: absolute;
+  left: 22px;
+  bottom: 70px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ice);
+  font: 8px var(--mono);
+  letter-spacing: 1.5px;
+  z-index: 7;
+}
+.scene-location small {
+  display: block;
+  font-size: 6px;
+  letter-spacing: 1px;
+  color: #7594ba;
+  margin-top: 7px;
+}
+.scene-crosshair {
+  font-size: 25px;
+  font-weight: 200;
+  line-height: 1;
+  color: #4ea5ff;
+}
+.scene-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.1;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 3px,
+    #8dc9ff08 4px
+  );
+  mask-image: linear-gradient(transparent, #000, transparent);
+}
+.scene-scanline:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background: linear-gradient(transparent, #4ea5ff20, transparent);
+  animation: sonar-scan 9s linear infinite;
+}
+.play-layout {
+  gap: 36px;
+}
+.play-panel {
+  padding: 26px 25px 0;
+  background: linear-gradient(145deg, #0e1826db, #080e17e8 58%);
+  border: 1px solid #29456555;
+  box-shadow: 0 18px 60px #0002;
+  border-radius: 3px;
+}
+.round-topline {
+  margin-bottom: 38px;
+}
+.live-stats {
+  margin-left: -1px;
+  margin-right: -1px;
+}
+.environment-compact {
+  margin-top: 0;
+}
+.reveal {
+  position: relative;
+}
+.reveal .category {
+  color: #91caff;
+}
+.reveal-rarity {
+  padding-left: 11px;
+  border-left: 2px solid #4ea5ff;
+  font-size: 13px;
+}
+.reveal-answer {
+  margin-top: 19px;
+}
+.points-earned {
+  color: #b7e1ff;
+  text-shadow: 0 0 45px #367bff35;
+}
+.milestone {
+  border: 1px solid #367bff70;
+  padding: 17px 14px;
+  background: linear-gradient(90deg, #367bff22, #101b2e88);
+  box-shadow: 0 0 26px #367bff0b;
+  font-size: 9px;
+}
+.timer-urgent {
+  animation: time-pulse 1s ease-in-out infinite;
+}
+.score-wave {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: score-surge 1.6s ease-out both;
+  background: radial-gradient(ellipse at 75% 55%, #367bff40, transparent 70%);
+}
+main,
+.site-footer {
+  position: relative;
+  z-index: 1;
+}
+.brand {
+  z-index: 5;
+}
+.primary {
+  position: relative;
+  overflow: hidden;
+}
+.primary:before {
+  content: "";
+  position: absolute;
+  inset: -50% -150%;
+  background: linear-gradient(
+    110deg,
+    transparent 43%,
+    #d2ecff22 50%,
+    transparent 57%
+  );
+  transform: translateX(-30%);
+  animation: button-sheen 8s ease-in-out infinite;
+  pointer-events: none;
+}
+.reveal .primary {
+  box-shadow: 0 6px 35px #367bff28;
+}
+.result-mark {
+  position: relative;
+}
+.result-mark:after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border: 1px solid #367bff33;
+  border-radius: 50%;
+  animation: result-sonar 3.5s ease-out infinite;
+}
+.hero-copy .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.hero-copy .title-dot {
+  text-shadow: 0 0 30px #367bff66;
+}
+@keyframes sonar-scan {
+  from {
+    transform: translateY(-90px);
+  }
+  to {
+    transform: translateY(750px);
+  }
+}
+@keyframes time-pulse {
+  50% {
+    filter: drop-shadow(0 0 9px #edb27c44);
+  }
+}
+@keyframes score-surge {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes button-sheen {
+  0%,
+  70%,
+  100% {
+    transform: translateX(-30%);
+  }
+  88% {
+    transform: translateX(30%);
+  }
+}
+@keyframes result-sonar {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+@media (max-width: 1050px) {
+  .immersive-environment .top-right {
+    display: none;
+  }
+  .play-layout {
+    gap: 20px;
+  }
+  .play-panel {
+    padding: 23px 20px 0;
+  }
+}
+@media (max-width: 760px) {
+  .play-layout {
+    gap: 18px;
+  }
+  .play-panel {
+    padding: 22px 19px 0;
+  }
+  .immersive-environment {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .immersive-environment .top-left {
+    left: 17px;
+    top: 18px;
+    font-size: 6px;
+  }
+  .immersive-environment .top-right {
+    right: 17px;
+    top: 18px;
+    font-size: 5px;
+  }
+  .immersive-environment .depth-rail {
+    right: 8px;
+    top: 75px;
+    bottom: 75px;
+    width: 32px;
+  }
+  .immersive-environment .environment-bottom {
+    left: 17px;
+    right: 16px;
+    bottom: 18px;
+    font-size: 6px;
+  }
+  .scene-location {
+    left: 15px;
+    bottom: 57px;
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .scene-location small {
+    font-size: 5px;
+    letter-spacing: 0.6px;
+  }
+  .environment-compact .descent-scene {
+    height: 100%;
+    width: 100%;
+  }
+  .environment-compact .top-right {
+    display: flex;
+  }
+  .environment-compact .depth-rail {
+    top: 56px;
+    bottom: 42px;
+    right: 8px;
+  }
+  .environment-compact .environment-bottom {
+    bottom: 12px;
+  }
+  .environment-compact .scene-location {
+    bottom: 42px;
+  }
+  .environment-compact {
+    min-height: 300px;
+    height: 300px;
+  }
+  .hero-copy .eyebrow {
+    font-size: 6px;
+    letter-spacing: 0.7px;
+  }
+  .milestone {
+    font-size: 8px;
+  }
+  .question-actions > span {
+    font-size: 5px;
+  }
+  .round-progress > span {
+    width: 18px;
+  }
+  .question {
+    font-size: 30px;
+  }
+  .hero-copy h1 {
+    margin-top: 28px;
+  }
+}
+@media (max-width: 480px) {
+  .hero-copy .eyebrow {
+    font-size: 6px;
+    letter-spacing: 0.7px;
+  }
+  .hero-copy {
+    padding-bottom: 18px;
+  }
+  .landing-hero > .environment {
+    margin-bottom: 22px;
+    min-height: 350px;
+    height: 350px;
+  }
+  .environment-compact {
+    min-height: 300px;
+    height: 300px;
+  }
+  .play-panel {
+    padding: 20px 15px 0;
+  }
+  .round-progress > span {
+    width: 17px;
+  }
+  .live-stats {
+    gap: 16px;
+  }
+  .live-stats strong {
+    font-size: 23px;
+  }
+  .zone-chip {
+    font-size: 5px;
+    padding: 6px;
+  }
+  .round-topline {
+    margin-bottom: 26px;
+  }
+  .reveal-answer {
+    font-size: 33px;
+  }
+  .points-earned {
+    font-size: 68px;
+  }
+  .scene-location small {
+    max-width: 180px;
+  }
+  .question {
+    font-size: 29px;
+  }
+  .reveal-note {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-scanline:after,
+  .timer-urgent,
+  .score-wave,
+  .primary:before,
+  .result-mark:after {
+    animation: none !important;
+  }
+  .score-wave {
+    display: none;
+  }
+}
+.reduce-motion .score-wave {
+  display: none;
+}
+.reduce-motion .scene-scanline:after,
+.reduce-motion .timer-urgent,
+.reduce-motion .primary:before,
+.reduce-motion .result-mark:after {
+  animation: none !important;
+}

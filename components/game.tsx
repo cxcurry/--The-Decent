@@ -21,9 +21,10 @@ import {
   X,
 } from "lucide-react";
 import type { GameView, HistoryEntry, RoundView } from "@/lib/types";
-import { TIERS, ZONES, zoneFor } from "@/lib/types";
+import { CURRENT_EDITION, TIERS, ZONES, zoneFor } from "@/lib/types";
 import { dayNumber } from "@/lib/daily";
 import Environment from "./environment";
+import DescentScene from "./descent-scene";
 type Page = "daily" | "history" | "how" | "settings";
 const format = (n: number) => n.toLocaleString("en-US");
 function countdown(ms: number) {
@@ -106,7 +107,7 @@ export default function Game() {
     stateRef.current = next;
     setData(next);
     const r = next.attempt?.rounds.at(-1);
-    const key = `${next.day}-${r?.number}`;
+    const key = `${next.day}-${next.attempt?.edition}-${r?.number}`;
     if (key !== roundKey.current) {
       roundKey.current = key;
       setText(r?.draft ?? "");
@@ -209,7 +210,7 @@ export default function Game() {
   const expired = round && !round.resolved && now >= round.deadline;
   useEffect(() => {
     if (!expired || !data) return;
-    const key = `${data.day}-${round?.number}`;
+    const key = `${data.day}-${attempt?.edition}-${round?.number}`;
     if (timeoutRound.current === key) return;
     timeoutRound.current = key;
     queue.current = queue.current.catch(() => {}).then(() => refresh());
@@ -254,7 +255,7 @@ export default function Game() {
   const share = async (entry?: HistoryEntry) => {
     const a = entry ?? attempt;
     if (!a) return;
-    const summary = `CORE° — THE DESCENT\n${a.day} · Daily #${dayNumber(a.day)}\n${a.rounds.map((r) => (r.points === 100 ? "💎" : r.points >= 60 ? "🔵" : r.points > 0 ? "⚪" : "⚫")).join("")}\n${a.score}/700 · ${format(a.score * 10)} m\n${zoneFor(a.score)}\nHow deep does your knowledge go?`;
+    const summary = `CORE° — THE DESCENT\n${a.day} · Daily #${dayNumber(a.day)} · ${a.edition === CURRENT_EDITION ? "Everyday" : "Original"} edition\n${a.rounds.map((r) => (r.points === 100 ? "💎" : r.points >= 60 ? "🔵" : r.points > 0 ? "⚪" : "⚫")).join("")}\n${a.score}/700 · ${format(a.score * 10)} m\n${zoneFor(a.score)}\nHow deep does your knowledge go?`;
     try {
       await navigator.clipboard.writeText(summary);
       setCopied(true);
@@ -277,6 +278,14 @@ export default function Game() {
           } as React.CSSProperties
         }
       >
+        <DescentScene ambient score={attempt?.score ?? 0} reduced={reduced} />
+        {page === "daily" && round?.resolved && round.points > 0 && (
+          <div
+            key={`${attempt?.day}-${round.number}`}
+            className="score-wave"
+            aria-hidden="true"
+          />
+        )}
         <a className="skip-link" href="#main">
           Skip to content
         </a>
@@ -376,8 +385,8 @@ export default function Game() {
                   <section className="landing-hero">
                     <div className="hero-copy">
                       <div className="eyebrow">
-                        <span className="tiny-line" /> A DAILY TEST OF UNCOMMON
-                        KNOWLEDGE
+                        <span className="tiny-line" /> FAMILIAR QUESTIONS.
+                        UNCOMMON DISCOVERIES.
                       </div>
                       <h1>
                         THE
@@ -506,7 +515,13 @@ export default function Game() {
                       </span>
                     </div>
                     <div className="play-layout">
-                      <section className="play-panel">
+                      <motion.section
+                        className="play-panel"
+                        key={`${attempt.edition}-${round.number}`}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45 }}
+                      >
                         <div className="round-topline">
                           <span className="eyebrow">
                             STAGE {String(round.number).padStart(2, "0")}{" "}
@@ -538,7 +553,8 @@ export default function Game() {
                             </div>
                             <h2 className="question">{round.prompt}</h2>
                             <p className="question-note">
-                              One correct answer. Make it an uncommon one.
+                              Start with an answer you know. Rarer answers earn
+                              more.
                             </p>
                             <div className="answer-area">
                               <form
@@ -573,7 +589,7 @@ export default function Game() {
                                     placeholder={
                                       preview
                                         ? "Read the prompt…"
-                                        : "Go beneath the obvious…"
+                                        : "Type an answer you know…"
                                     }
                                     maxLength={120}
                                     autoComplete="off"
@@ -681,10 +697,15 @@ export default function Game() {
                               Math.floor(
                                 (attempt.score - round.points) / 100,
                               ) && (
-                              <div className="milestone">
+                              <motion.div
+                                className="milestone"
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.4 }}
+                              >
                                 <Crosshair size={14} /> NEW DEPTH ZONE ·{" "}
                                 {zoneFor(attempt.score)}
-                              </div>
+                              </motion.div>
                             )}
                             <p className="reveal-note">
                               {round.points >= 60
@@ -731,7 +752,7 @@ export default function Game() {
                             {zoneFor(attempt.score)}
                           </span>
                         </div>
-                      </section>
+                      </motion.section>
                       <Environment
                         compact
                         score={attempt.score}
@@ -752,6 +773,7 @@ export default function Game() {
                   <Results
                     entry={{
                       day: attempt.day,
+                      edition: attempt.edition,
                       score: attempt.score,
                       rounds: attempt.rounds,
                     }}
@@ -820,10 +842,16 @@ export default function Game() {
                       <p>
                         Rarity tiers are curated editorial estimates, not
                         measured player popularity. Our starter collection has
-                        49 original questions in seven rotating daily sets. Some
-                        valid answers may not yet be in the bank; try another if
-                        yours is unrecognized. Aliases, accents and conservative
-                        typo correction are supported.
+                        49 approachable questions in seven rotating daily sets.
+                        Common answers count, and rarer answers are a bonus.
+                        Some valid answers may not yet be in the bank; try
+                        another if yours is unrecognized. Aliases, accents and
+                        conservative typo correction are supported.
+                      </p>
+                      <p>
+                        The Everyday edition gives existing players a fresh
+                        daily attempt. Original-edition results are retained in
+                        your history. Each edition permits one attempt per day.
                       </p>
                       <p>
                         Your anonymous browser cookie identifies your saved
@@ -961,10 +989,17 @@ export default function Game() {
                       ) : (
                         <div className="history-list">
                           {history.map((a) => (
-                            <button key={a.day} onClick={() => setSelected(a)}>
+                            <button
+                              key={a.id ?? `${a.day}-${a.edition}`}
+                              onClick={() => setSelected(a)}
+                            >
                               <span className="history-date">
                                 {a.day}
-                                <small>COMPLETED EXPEDITION</small>
+                                <small>
+                                  {a.edition === CURRENT_EDITION
+                                    ? "EVERYDAY EDITION"
+                                    : "ORIGINAL EDITION"}
+                                </small>
                               </span>
                               <span className="history-zone">
                                 {zoneFor(a.score)}
@@ -1047,7 +1082,9 @@ function Results({
     <section className="results content-page">
       <div className="results-heading">
         <span className="eyebrow">
-          <span className="signal-dot" /> EXPEDITION COMPLETE / {entry.day}
+          <span className="signal-dot" />{" "}
+          {entry.edition === CURRENT_EDITION ? "EVERYDAY" : "ORIGINAL"}{" "}
+          EXPEDITION COMPLETE / {entry.day}
         </span>
         <span className="result-mark">
           <Crosshair size={42} />

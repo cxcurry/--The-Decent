@@ -8,9 +8,16 @@ import {
   type Candidate,
 } from "../lib/recognition";
 import { questions } from "../lib/questions";
-import { TIERS, zoneFor } from "../lib/types";
+import { CURRENT_EDITION, TIERS, zoneFor } from "../lib/types";
 import { db, sqlite } from "../lib/db";
-import { answerTable } from "../lib/schema";
+import {
+  answerTable,
+  attemptTable,
+  questionTable,
+  roundTable,
+} from "../lib/schema";
+import Database from "better-sqlite3";
+import { migrateEditions } from "../lib/migrations";
 import { eq } from "drizzle-orm";
 import { gameState, identity, historyFor, statsFor } from "../lib/game";
 const NOW = Date.parse("2026-10-14T16:00:00Z");
@@ -103,13 +110,21 @@ describe("curated data", () => {
       }
     }
   });
-  it("does not accept out-of-scope factual examples", () => {
-    expect(recognize("Iron", candidates("q38"))).toBeNull();
-    expect(recognize("Van Gogh", candidates("q21"))).toBeNull();
-    expect(recognize("Frans Hals", candidates("q21"))).toBeNull();
-    expect(candidates("q01")).toHaveLength(54);
-    expect(recognize("Lincoln", candidates("q26"))).toBeNull();
-    expect(recognize("Linda Buck", candidates("q19"))).toBeNull();
+  it("keeps familiar answers in scope and rejects unrelated guesses", () => {
+    expect(recognize("United States", candidates("everyday-01"))).toBeNull();
+    expect(recognize("Pluto", candidates("everyday-02"))).toBeNull();
+    expect(recognize("Sunday", candidates("everyday-12"))).toBeNull();
+    expect(recognize("Dog", candidates("everyday-45"))).toBeNull();
+    expect(candidates("everyday-01")).toHaveLength(54);
+    expect(candidates("everyday-22")).toHaveLength(50);
+    expect(candidates("everyday-43").length).toBeGreaterThanOrEqual(195);
+    for (const q of questions) {
+      expect(q.groups[0].length, q.prompt).toBeGreaterThan(0);
+      for (const item of q.groups[0].split("|"))
+        expect(recognize(item.split("~")[0], candidates(q.id))?.points).toBe(
+          10,
+        );
+    }
   });
 });
 describe("New York daily scheduling", () => {
@@ -297,5 +312,123 @@ describe("server-authoritative daily engine", () => {
     expect(zoneFor(0)).toBe("THE SURFACE");
     expect(zoneFor(100)).toBe("THE VEIL");
     expect(zoneFor(700)).toBe("THE CORE");
+  });
+});
+
+describe("edition upgrades", () => {
+  it("migrates the old unique constraint without removing a result", () => {
+    const legacy = new Database(":memory:");
+    legacy.exec(
+      "CREATE TABLE attempts (id INTEGER PRIMARY KEY,player_id TEXT,day TEXT,score INTEGER); CREATE UNIQUE INDEX one_daily_attempt ON attempts(player_id,day); INSERT INTO attempts VALUES(1,'player','2026-10-14',85);",
+    );
+    migrateEditions(legacy);
+    migrateEditions(legacy);
+    expect(
+      legacy.prepare("SELECT score,edition FROM attempts WHERE id=1").get(),
+    ).toEqual({ score: 85, edition: "original" });
+    legacy
+      .prepare(
+        "INSERT INTO attempts(player_id,day,score,edition) VALUES(?,?,?,?)",
+      )
+      .run("player", "2026-10-14", 0, CURRENT_EDITION);
+    expect(() =>
+      legacy
+        .prepare(
+          "INSERT INTO attempts(player_id,day,score,edition) VALUES(?,?,?,?)",
+        )
+        .run("player", "2026-10-14", 0, CURRENT_EDITION),
+    ).toThrow();
+    expect(legacy.prepare("SELECT count(*) AS n FROM attempts").get()).toEqual({
+      n: 2,
+    });
+    legacy.close();
+  });
+  it("offers a fresh Everyday attempt and retains original prompts, scores and streaks", () => {
+    db.insert(questionTable)
+      .values({
+        id: "original-fixture",
+        set: 0,
+        position: 0,
+        category: "ORIGINAL",
+        prompt: "Original specialist prompt",
+      })
+      .onConflictDoNothing()
+      .run();
+    const old = db
+      .insert(attemptTable)
+      .values({
+        playerId: player,
+        day: "2026-10-14",
+        edition: "original",
+        status: "complete",
+        current: 6,
+        score: 70,
+      })
+      .returning()
+      .get();
+    for (let number = 1; number <= 7; number++)
+      db.insert(roundTable)
+        .values({
+          attemptId: old.id,
+          questionId: "original-fixture",
+          number,
+          previewUntil: NOW - 5000,
+          deadline: NOW - 1000,
+          resolved: true,
+          submitted: "Saved answer",
+          answer: "Saved answer",
+          points: 10,
+          tier: "SURFACE",
+          outcome: "accepted",
+        })
+        .run();
+    expect(gameState(player, "state", "", undefined, NOW).attempt).toBeNull();
+    let state = gameState(player, "start", "", undefined, NOW),
+      time = NOW;
+    expect(state.attempt!.edition).toBe(CURRENT_EDITION);
+    for (let index = 1; index <= 7; index++) {
+      time += 3000;
+      const easy = candidates(currentQuestion(state).id).find(
+        (a) => a.points === 10,
+      )!;
+      state = gameState(player, "submit", easy.canonical, index, time);
+      if (index < 7) {
+        time += 1000;
+        state = gameState(player, "continue", "", index, time);
+      }
+    }
+    const history = historyFor(player);
+    expect(history).toHaveLength(2);
+    expect(
+      history.find((a) => a.edition === "original")?.rounds[0].prompt,
+    ).toBe("Original specialist prompt");
+    expect(history.find((a) => a.edition === "original")?.score).toBe(70);
+    expect(state.attempt!.score).toBe(70);
+    expect(statsFor(player, "2026-10-14")).toMatchObject({
+      streak: 1,
+      longestStreak: 1,
+      completed: 2,
+    });
+    expect(
+      gameState(player, "start", "", undefined, time + 1000).attempt,
+    ).toEqual(state.attempt);
+  });
+  it("can complete every daily set using only familiar ten-point answers", () => {
+    for (let set = 0; set < 7; set++) {
+      let time = Date.parse(`2026-01-0${set + 1}T17:00:00Z`);
+      let state = gameState(player, "start", "", undefined, time);
+      for (let round = 1; round <= 7; round++) {
+        time += 3000;
+        const question = currentQuestion(state);
+        const answer = question.groups[0].split("|")[0].split("~")[0];
+        state = gameState(player, "submit", answer, round, time);
+        if (round < 7) {
+          time += 1000;
+          state = gameState(player, "continue", "", round, time);
+        }
+      }
+      expect(state.attempt!.score).toBe(70);
+      expect(state.attempt!.status).toBe("complete");
+    }
   });
 });

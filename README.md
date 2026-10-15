@@ -14,6 +14,8 @@ npm run dev
 
 Open port **3000** in your own development environment. The server binds to `0.0.0.0`. No `.env` file or secrets are required. The database defaults to `.local/core.sqlite`, with SQLite WAL sidecars in the same directory. `DATABASE_PATH` optionally selects an absolute or relative database path. Do not put the database in `public/`.
 
+On Windows, you can also double-click `PLAY-CORE.cmd` in the game folder after installing Node.js 24 LTS.
+
 The database and question bank initialize automatically on first API use. `db:seed` is also safe to rerun: a seed content hash avoids unnecessary changes. A new seed version updates question/answer records transactionally while preserving player identities and already-scored results. Keep published question IDs stable and do not repurpose a question ID for an unrelated question.
 
 ## Validate
@@ -50,28 +52,41 @@ No changes are made to cotye.com or any live website. The application is self-co
 ## Gameplay and trust boundary
 
 - The browser receives only the current/past prompts and the player's own resolved answers. It receives no future questions, answer lists, editorial scores for unseen answers, or session token in JSON. Database modules are imported only by Node server code.
-- The database contains **49 original prompts, seven sets of seven, 584 canonical answers and curated aliases**. Every question includes a 100-point answer. The starter schedule rotates weekly; it is not an unlimited question service.
-- Six tiers: SURFACE **10**, RECOGNIZED **15**, DEEP THINKER **30**, RARE FIND **60**, ABYSSAL **85**, CORE° **100**. These are **editorial estimates**, not player-frequency statistics. Each canonical answer always has the same score for its question. Every point equals ten meters; 700 points equals 7,000 meters.
+- The database contains **49 approachable prompts, seven sets of seven, 1,623 canonical answers and curated aliases**. Every question includes familiar ten-point answers and a 100-point answer. The difficulty comes from finding rarer answers, rather than understanding specialist prompts. The starter schedule rotates weekly; it is not an unlimited question service.
+- Six tiers: SURFACE **10**, RECOGNIZED **15**, DEEP THINKER **30**, RARE FIND **60**, ABYSSAL **85**, CORE° **100**. These are **editorial estimates**, not player-frequency statistics. Each canonical answer always has the same score for its question and editorial edition. Every point equals ten meters; 700 points equals 7,000 meters.
 - Text normalization handles case, accents, punctuation, whitespace, ampersands, aliases, abbreviations, and meaningful symbols such as `C++`. Typo correction allows one edit only for strings at least five characters long and only when one canonical answer matches. Short aliases need exact matching. Some scientifically valid or less common answers may not be in the curated bank: the interface explains this rather than treating the bank as omniscient.
 - Each stage persists a two-second reading preview and a 25-second deadline based on server time. Navigating away or refreshing does not pause an active stage. Reveal screens have no active timer. A fresh stage begins only when Continue is accepted.
 - The input autosaves after 180 ms of inactivity and on blur. At expiry the server evaluates the **last server-saved draft**. Late client-supplied text cannot replace it. A very recent unsaved edit or a connection failure may not be included; the UI shows save status and connection errors.
-- Mutations require a same-origin `Origin` header, validate request size, action, answer length and round number, and use immediate SQLite transactions plus unique player/day and attempt/round constraints. Repeat submissions cannot award extra points; stale Continue requests cannot skip rounds. Scoring is always calculated on the server.
+- Mutations require a same-origin `Origin` header, validate request size, action, answer length and round number, and use immediate SQLite transactions plus unique player/day/edition and attempt/round constraints. Repeat submissions cannot award extra points; stale Continue requests cannot skip rounds. Scoring is always calculated on the server.
 - Anonymous identity is a random 256-bit cookie token whose SHA-256 hash identifies a player in the database. It is not an account. Clearing cookies, opening a private session, or changing browsers permits a new identity. There is no claim of perfect anti-cheat, measured answer popularity, global rankings, or cross-device sync. Add infrastructure-level rate limits before a large public launch.
-- Reset is **midnight America/New_York**, using IANA time-zone conversion, including 23- and 25-hour daylight-saving days. All players get the same set for a given New York date. New days create new attempts; unfinished previous-day attempts expire from play. Completed attempts remain available in the expedition log. A streak includes yesterday until today's opportunity closes.
+- Reset is **midnight America/New_York**, using IANA time-zone conversion, including 23- and 25-hour daylight-saving days. All players on the same editorial edition get the same set for a given New York date. The Everyday edition gives existing players one fresh attempt; previous completed attempts remain labeled Original edition. Streaks count distinct dates, so completing both editions on one day does not inflate a streak. New days create new attempts; unfinished previous-day attempts expire from play. Completed attempts remain available in the expedition log. A streak includes yesterday until today's opportunity closes.
 
 ## Question editing
 
 `lib/questions.ts` is the original editorial bank. Each question has six pipe-separated groups corresponding to the six scoring tiers; `~` adds aliases to a canonical answer. Empty groups are permitted for small factual answer sets. Add original entries with a stable ID and run `npm run db:seed`. Extend `setFor` in `lib/daily.ts` and the bank scheduling together when adding more daily sets.
 
-Factual scope is based on standard public reference topics: sovereign states and geography; IUPAC elements; NASA planetary and lunar facts; SI base units; IAU constellations/dwarf planets; the UN official language and Secretary-General lists; Nobel Prize historical awards; HTTP RFC 9110/5789; and standard biological, culinary and art-historical classifications. Question wording, selection, scoring and implementation are original. Rarity assignments are not sourced player data. The reference website could not be reached from this environment (network proxy returned 403); no proprietary assets, question bank, code or written content were copied.
+The active bank focuses on familiar subjects: countries, planets, farm animals, food, colors, music, sports, body parts, birds, movies, flowers, US states, jobs, weather, capitals, dog breeds, and games. Open prompts accept a broad curated collection; for example, the Africa question covers all 54 countries and the US-state question covers all 50 states. Question wording, selection, scoring, and implementation are original. Rarity assignments are editorial estimates, not sourced player data. The reference website could not be reached from this environment (network proxy returned 403); no proprietary assets, question bank, code, or written content were copied.
+
+## Everyday edition and safe updates
+
+The Everyday edition uses new question IDs. Upgraded databases retain the original question rows, accepted answers and results; fresh databases contain only the current active bank. An idempotent, transactional SQLite migration adds the editorial edition to daily-attempt uniqueness. Each edition allows one attempt per date, including after refresh. Original-edition completed attempts remain in history. Original unfinished attempts are retired from active play when upgrading. The database is never deleted to unlock the easier questions.
+
+On Windows, stop the running game with **Ctrl+C**, then run `UPDATE-CORE.cmd` from the game folder. It fetches the public source ZIP from this GitHub repository over HTTPS, updates source files in place, runs a locked dependency install, seeds the database, and starts the development server. It preserves `.local/`, database files, private environment files, and Git metadata because they are not part of the public source archive. It refuses to update while port 3000 is occupied, does not kill processes, and does not change PowerShell execution policy. The helper uses Windows built-in PowerShell and curl; install Node.js 24 LTS first. If downloading it into an existing game folder, use:
+
+```powershell
+curl.exe --fail --location https://raw.githubusercontent.com/cxcurry/--The-Decent/main/UPDATE-CORE.cmd --output UPDATE-CORE.cmd
+.\UPDATE-CORE.cmd
+```
+
+The original procedural Canvas environment includes a probe with a searchlight, parallax canyon layers, moving sonar contours, upward-drifting particles, score-driven travel trails, blue lighting that darkens with depth, and depth-zone reveal animations. Canvas rendering runs independently of the server timer, caps pixel density and mobile frame rate, pauses painting when out of view or hidden, and draws a static frame with reduced motion enabled. No external image or video assets are loaded.
 
 ## Source map
 
 - `app/` — page, global styling, HTTP game/history endpoints
-- `components/` — complete game interface and original SVG descent instrument
+- `components/` — complete game interface and original animated Canvas expedition environment
 - `lib/game.ts` — transactional game state machine, history, statistics
 - `lib/daily.ts` — New York day keys and DST-safe reset scheduling
 - `lib/recognition.ts` — canonical answer matching and conservative edit distance
-- `lib/schema.ts`, `lib/db.ts` — Drizzle schema, SQLite setup, versioned seeding
+- `lib/schema.ts`, `lib/db.ts`, `lib/migrations.ts` — Drizzle schema, SQLite setup, transactional edition migration and versioned seeding
 - `lib/questions.ts` — original 49-question editorial bank
 - `tests/` — Vitest unit/integration tests and Playwright browser tests

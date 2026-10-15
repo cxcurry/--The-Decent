@@ -263,3 +263,42 @@ test("narrow phone, tablet and desktop layouts keep controls within the viewport
     await expect(page.locator("h1")).toBeVisible();
   }
 });
+
+test("the expedition scene animates and reduced motion produces a static scene", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("button", { name: "START DESCENT", exact: true }),
+  ).toBeVisible();
+  const scene = page.locator(".descent-scene");
+  async function fingerprint() {
+    return scene.evaluate((node) => {
+      const c = node as HTMLCanvasElement;
+      const pixels = c
+        .getContext("2d")!
+        .getImageData(0, 0, c.width, c.height).data;
+      let hash = 2166136261;
+      for (let i = 0; i < pixels.length; i += 16)
+        hash = Math.imul(hash ^ pixels[i], 16777619);
+      return hash;
+    });
+  }
+  const initial = await fingerprint();
+  await expect.poll(fingerprint).not.toBe(initial);
+  if (info.project.name === "mobile")
+    await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("switch", { name: "Reduced motion" }).click();
+  if (info.project.name === "mobile")
+    await page.getByRole("button", { name: "Open menu" }).click();
+  await page
+    .getByRole("button", { name: "Daily Descent", exact: true })
+    .click();
+  await expect(page.locator(".app")).toHaveClass(/reduce-motion/);
+  await expect(scene).toBeVisible();
+  const still = await fingerprint();
+  // This wait tests the promised absence of animation, rather than page readiness.
+  await page.waitForTimeout(450);
+  expect(await fingerprint()).toBe(still);
+});

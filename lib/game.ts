@@ -10,6 +10,8 @@ import {
 } from "./schema";
 import { dayAt, dayNumber, nextReset, setFor } from "./daily";
 import { recognize } from "./recognition";
+import { questions } from "./questions";
+import { CURRENT_EDITION } from "./types";
 import type { GameView, Stats, RoundView, HistoryEntry } from "./types";
 export class GameError extends Error {
   constructor(
@@ -33,7 +35,13 @@ function attemptFor(playerId: string, day: string) {
   return db
     .select()
     .from(attemptTable)
-    .where(and(eq(attemptTable.playerId, playerId), eq(attemptTable.day, day)))
+    .where(
+      and(
+        eq(attemptTable.playerId, playerId),
+        eq(attemptTable.day, day),
+        eq(attemptTable.edition, CURRENT_EDITION),
+      ),
+    )
     .get();
 }
 function roundsFor(attemptId: number): RoundView[] {
@@ -67,12 +75,7 @@ function beginRound(
   const question = db
     .select()
     .from(questionTable)
-    .where(
-      and(
-        eq(questionTable.set, setFor(day)),
-        eq(questionTable.position, index),
-      ),
-    )
+    .where(eq(questionTable.id, questions[setFor(day) * 7 + index].id))
     .get();
   if (!question) throw new GameError("Question data is unavailable.", 503);
   db.insert(roundTable)
@@ -132,8 +135,8 @@ export function statsFor(playerId: string, day = dayAt()): Stats {
   let longest = 0,
     run = 0,
     previous = -Infinity;
-  for (const a of completed) {
-    const n = dayNumber(a.day);
+  for (const completedDay of new Set(completed.map((a) => a.day))) {
+    const n = dayNumber(completedDay);
     run = n === previous + 1 ? run + 1 : 1;
     longest = Math.max(longest, run);
     previous = n;
@@ -176,7 +179,7 @@ export function gameState(
       if (action === "start" && !attempt) {
         attempt = db
           .insert(attemptTable)
-          .values({ playerId, day })
+          .values({ playerId, day, edition: CURRENT_EDITION })
           .returning()
           .get();
         beginRound(attempt.id, day, 0, now);
@@ -261,6 +264,7 @@ export function gameState(
         attempt: attempt
           ? {
               day: attempt.day,
+              edition: attempt.edition,
               status: attempt.status,
               score: attempt.score,
               current: attempt.current,
@@ -284,7 +288,13 @@ export function historyFor(playerId: string): HistoryEntry[] {
         eq(attemptTable.status, "complete"),
       ),
     )
-    .orderBy(desc(attemptTable.day))
+    .orderBy(desc(attemptTable.day), desc(attemptTable.id))
     .all()
-    .map((a) => ({ day: a.day, score: a.score, rounds: roundsFor(a.id) }));
+    .map((a) => ({
+      id: a.id,
+      edition: a.edition,
+      day: a.day,
+      score: a.score,
+      rounds: roundsFor(a.id),
+    }));
 }

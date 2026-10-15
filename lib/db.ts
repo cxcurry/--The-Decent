@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { questions } from "./questions";
+import { migrateEditions } from "./migrations";
 import { TIERS } from "./types";
 import { answerTable, questionTable } from "./schema";
 // Runtime volume paths are not deployment assets to bundle.
@@ -24,11 +25,11 @@ CREATE TABLE IF NOT EXISTS questions (id TEXT PRIMARY KEY,set_id INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS answers (id INTEGER PRIMARY KEY AUTOINCREMENT,question_id TEXT NOT NULL REFERENCES questions(id),canonical TEXT NOT NULL,aliases TEXT NOT NULL,points INTEGER NOT NULL,tier TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY,created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS attempts (id INTEGER PRIMARY KEY AUTOINCREMENT,player_id TEXT NOT NULL REFERENCES players(id),day TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',current INTEGER NOT NULL DEFAULT 0,score INTEGER NOT NULL DEFAULT 0);
-CREATE UNIQUE INDEX IF NOT EXISTS one_daily_attempt ON attempts(player_id,day);
 CREATE TABLE IF NOT EXISTS rounds (id INTEGER PRIMARY KEY AUTOINCREMENT,attempt_id INTEGER NOT NULL REFERENCES attempts(id),question_id TEXT NOT NULL REFERENCES questions(id),number INTEGER NOT NULL,preview_until INTEGER NOT NULL,deadline INTEGER NOT NULL,draft TEXT NOT NULL DEFAULT '',resolved INTEGER NOT NULL DEFAULT 0,answer TEXT,submitted TEXT,points INTEGER NOT NULL DEFAULT 0,tier TEXT,outcome TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS one_round ON rounds(attempt_id,number);
 CREATE INDEX IF NOT EXISTS answers_question ON answers(question_id);
 `);
+migrateEditions(sqlite);
 export const db = drizzle(sqlite);
 export function seed() {
   const version = createHash("sha256")

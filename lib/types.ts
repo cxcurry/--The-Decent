@@ -1,3 +1,4 @@
+export const CURRENT_EDITION = "everyday-v2";
 export const TIERS = [
   { name: "SURFACE", points: 10, color: "#8796ac" },
   { name: "RECOGNIZED", points: 15, color: "#a8d7ff" },
@@ -33,6 +34,7 @@ export type RoundView = {
   outcome: string | null;
 };
 export type AttemptView = {
+  edition: string;
   day: string;
   status: "active" | "complete";
   score: number;
@@ -56,4 +58,10 @@ export type GameView = {
   feedback?: string;
   rejected?: boolean;
 };
-export type HistoryEntry = { day: string; score: number; rounds: RoundView[] };
+export type HistoryEntry = {
+  id?: number;
+  edition?: string;
+  day: string;
+  score: number;
+  rounds: RoundView[];
+};

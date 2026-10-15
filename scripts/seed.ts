@@ -1,6 +1,21 @@
-import { sqlite } from "../lib/db";
+import { db, sqlite } from "../lib/db";
+import { questions } from "../lib/questions";
+import { questionTable, answerTable } from "../lib/schema";
+import { count, inArray } from "drizzle-orm";
+const ids = questions.map((q) => q.id);
 console.log(
-  sqlite.prepare("SELECT count(*) AS questions FROM questions").get(),
+  db
+    .select({ questions: count() })
+    .from(questionTable)
+    .where(inArray(questionTable.id, ids))
+    .get(),
 );
-console.log(sqlite.prepare("SELECT count(*) AS answers FROM answers").get());
+console.log(
+  db
+    .select({ answers: count() })
+    .from(answerTable)
+    .where(inArray(answerTable.questionId, ids))
+    .get(),
+);
+console.log("Everyday edition ready. Previous results are preserved.");
 sqlite.close();

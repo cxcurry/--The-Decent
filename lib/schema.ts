@@ -33,6 +33,7 @@ export const attemptTable = sqliteTable(
       .notNull()
       .references(() => playerTable.id),
     day: text("day").notNull(),
+    edition: text("edition").notNull().default("original"),
     status: text("status")
       .$type<"active" | "complete">()
       .notNull()
@@ -40,7 +41,9 @@ export const attemptTable = sqliteTable(
     current: integer("current").notNull().default(0),
     score: integer("score").notNull().default(0),
   },
-  (t) => [uniqueIndex("one_daily_attempt").on(t.playerId, t.day)],
+  (t) => [
+    uniqueIndex("one_daily_attempt_edition").on(t.playerId, t.day, t.edition),
+  ],
 );
 export const roundTable = sqliteTable(
   "rounds",
