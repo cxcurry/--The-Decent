@@ -28,8 +28,9 @@ import Environment from "./environment";
 import DescentScene from "./descent-scene";
 import FullscreenButton from "./fullscreen-button";
 import DiveTransition from "./dive-transition";
+import DivePreview from "./dive-preview";
 import { useDiveAudio } from "./use-dive-audio";
-import { earnedDive, type DiveEvent } from "@/lib/dive";
+import { diveProfile, earnedDive, type DiveEvent } from "@/lib/dive";
 type Page = "daily" | "history" | "how" | "settings";
 const format = (n: number) => n.toLocaleString("en-US");
 function countdown(ms: number) {
@@ -276,13 +277,30 @@ export default function Game() {
       );
     }
   };
+  const tryDive = (points: number) => {
+    if (dive || busy || (attempt?.status === "active" && !round?.resolved))
+      return;
+    const profile = diveProfile(points);
+    if (!profile) return;
+    if (sound) unlockAudio();
+    const startedAt = performance.now();
+    setDive({
+      id: `preview/${crypto.randomUUID()}`,
+      fromDepth: 0,
+      toDepth: points * 10,
+      startedAt,
+      profile,
+      preview: true,
+    });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
   const stats = data?.stats;
   const complete = attempt?.status === "complete";
-  const diving = page === "daily" && dive !== null;
+  const diving = dive !== null && (page === "daily" || !!dive.preview);
   return (
     <MotionConfig reducedMotion={reduced ? "always" : "user"}>
       <div
-        className={`app ${page === "daily" ? "world-page" : "reading-page"} ${reduced ? "reduce-motion" : ""} ${diving ? "dive-in-progress" : ""}`}
+        className={`app ${page === "daily" || dive?.preview ? "world-page" : "reading-page"} ${reduced ? "reduce-motion" : ""} ${diving ? "dive-in-progress" : ""}`}
         style={
           {
             "--zone-darkness": `${Math.min(0.5, (attempt?.score ?? 0) / 1400)}`,
@@ -290,7 +308,7 @@ export default function Game() {
         }
       >
         <DescentScene
-          score={attempt?.score ?? 0}
+          score={dive?.preview ? dive.toDepth / 10 : (attempt?.score ?? 0)}
           reduced={reduced}
           active={!!attempt}
           dive={dive}
@@ -813,6 +831,8 @@ export default function Game() {
                     copied={copied}
                     next={countdown(data.nextReset - now)}
                     onHistory={() => navigate("history")}
+                    onPreview={tryDive}
+                    previewDisabled={!!dive || busy}
                   />
                 )}
               {page === "how" && (
@@ -944,6 +964,13 @@ export default function Game() {
                       <span />
                     </button>
                   </div>
+                  <DivePreview
+                    onPreview={tryDive}
+                    disabled={!!dive || busy}
+                    roundActive={
+                      attempt?.status === "active" && !round?.resolved
+                    }
+                  />
                   <div className="field-note">
                     <ShieldCheck size={22} />
                     <div>
@@ -1103,6 +1130,8 @@ function Results({
   copied,
   next,
   onHistory,
+  onPreview,
+  previewDisabled,
 }: {
   entry: HistoryEntry;
   stats: GameView["stats"];
@@ -1110,6 +1139,8 @@ function Results({
   copied: boolean;
   next?: string;
   onHistory: () => void;
+  onPreview?: (points: number) => void;
+  previewDisabled?: boolean;
 }) {
   return (
     <section className="results content-page">
@@ -1163,6 +1194,9 @@ function Results({
             MY EXPEDITION LOG <ArrowUpRight size={16} />
           </button>
         </div>
+        {onPreview && (
+          <DivePreview onPreview={onPreview} disabled={previewDisabled} />
+        )}
       </div>
       <div className="breakdown">
         <div className="section-heading">

@@ -132,6 +132,38 @@ test("complete seven-round expedition, persistence, authoritative scores, result
     path: `test-results/${info.project.name}-results.png`,
     fullPage: true,
   });
+  // Finished players can compare the effects without resetting their daily
+  // attempt, changing stats/history, or sending any game mutation.
+  const saved: GameView = await (await page.request.get("/api/game")).json();
+  const savedHistory = await (await page.request.get("/api/history")).json();
+  const writes: string[] = [];
+  const recordWrite = (request: import("@playwright/test").Request) => {
+    if (request.url().endsWith("/api/game") && request.method() === "POST")
+      writes.push(request.url());
+  };
+  page.on("request", recordWrite);
+  for (const points of [100, 10]) {
+    await page
+      .getByRole("button", {
+        name: `Preview ${points}-point dive`,
+        exact: true,
+      })
+      .click();
+    const preview = page.locator('.dive-transition[data-preview="true"]');
+    await expect(preview).toHaveAttribute("data-points", String(points));
+    await expect(preview).toContainText("PREVIEW");
+    await expect(preview).toHaveCount(0, { timeout: 5000 });
+  }
+  page.off("request", recordWrite);
+  expect(writes).toEqual([]);
+  const unchanged: GameView = await (
+    await page.request.get("/api/game")
+  ).json();
+  expect(unchanged.attempt).toEqual(saved.attempt);
+  expect(unchanged.stats).toEqual(saved.stats);
+  expect(await (await page.request.get("/api/history")).json()).toEqual(
+    savedHistory,
+  );
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "COPY RESULTS", exact: true }).click();
   await expect(

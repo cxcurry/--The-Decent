@@ -28,9 +28,11 @@ export default function DiveTransition({
     <div
       className={`dive-transition ${reduced ? "dive-calm" : ""}`}
       data-points={dive.profile.points}
+      data-preview={dive.preview ? "true" : undefined}
       data-reward={dive.profile.label}
     >
       <div className="dive-caption" role="status">
+        {dive.preview ? "PREVIEW · " : ""}
         {dive.profile.label} · +{dive.profile.points} POINTS · {distance} METERS
         DEEPER
       </div>
@@ -56,10 +58,14 @@ export default function DiveTransition({
         </div>
         <small>
           {reduced
-            ? "NEW DEPTH REACHED"
+            ? dive.preview
+              ? "PREVIEW ONLY · SCORE UNCHANGED"
+              : "NEW DEPTH REACHED"
             : progress < 0.82
               ? "THRUSTERS ENGAGED · DESCENDING"
-              : "STABILIZING AT NEW DEPTH"}
+              : dive.preview
+                ? "PREVIEW ONLY · SCORE UNCHANGED"
+                : "STABILIZING AT NEW DEPTH"}
         </small>
       </div>
     </div>

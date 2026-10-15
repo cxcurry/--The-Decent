@@ -101,6 +101,10 @@ Sound remains opt-in through **SOUND OFF / SOUND ON** in the lower-left corner o
 
 Tests cover reward scaling, exact depth endpoints, event deduplication, full desktop/phone games, mute and reduced-motion behavior, no replay after reload/refocus, and actual OfflineAudioContext waveforms (the CORE reward has greater energy and duration than a Surface reward).
 
+## Preview after finishing the daily game
+
+The **Try the dive effects** panel appears below the buttons on today's results and in Settings. All six score tiers can be previewed repeatedly, even after completing the daily challenge. Previews use the same world, motion and audio profiles as earned rewards, are explicitly labeled PREVIEW, run from the surface to the selected tier's depth, then return to the saved scene. They never send a game mutation, change scores/history/streaks, reset cookies, or create another daily attempt. Sound and reduced-motion preferences apply. Previews are disabled while a question timer is running; they cannot pause or extend it. The daily challenge still resets at midnight America/New_York, rather than 24 hours after a player finishes.
+
 ## Source map
 
 - `app/` — page, global styling, HTTP game/history endpoints

@@ -65,6 +65,7 @@ export type DiveEvent = {
   toDepth: number;
   startedAt: number;
   profile: DiveProfile;
+  preview?: boolean;
 };
 export function diveProfile(points: number): DiveProfile | null {
   return REWARDS.find((reward) => reward.points === points) ?? null;

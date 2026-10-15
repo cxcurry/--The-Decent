@@ -150,3 +150,54 @@ test("accepted answers trigger one scaled dive; mute and reduced motion are resp
   expect(await count()).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test("settings previews do not start a daily attempt and are unavailable during a timed round", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  const settings = async () => {
+    if (info.project.name === "mobile")
+      await page.getByRole("button", { name: "Open menu" }).click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+  };
+  const daily = async () => {
+    if (info.project.name === "mobile")
+      await page.getByRole("button", { name: "Open menu" }).click();
+    await page
+      .getByRole("button", { name: "Daily Descent", exact: true })
+      .click();
+  };
+  await settings();
+  await page
+    .getByRole("button", { name: "Preview 100-point dive", exact: true })
+    .click();
+  const preview = page.locator('.dive-transition[data-preview="true"]');
+  await expect(preview).toHaveAttribute("data-points", "100");
+  await expect(preview).toHaveCount(0, { timeout: 5000 });
+  const empty: GameView = await (await page.request.get("/api/game")).json();
+  expect(empty.attempt).toBeNull();
+  expect(empty.stats.completed).toBe(0);
+  await daily();
+  await page
+    .getByRole("button", { name: "START DESCENT", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "YOUR ANSWER", exact: true }),
+  ).toBeEnabled();
+  const active: GameView = await (await page.request.get("/api/game")).json();
+  await settings();
+  for (const points of [10, 15, 30, 60, 85, 100])
+    await expect(
+      page.getByRole("button", {
+        name: `Preview ${points}-point dive`,
+        exact: true,
+      }),
+    ).toBeDisabled();
+  await expect(
+    page.getByText("Finish your current round before previewing."),
+  ).toBeVisible();
+  const stillActive: GameView = await (
+    await page.request.get("/api/game")
+  ).json();
+  expect(stillActive.attempt).toEqual(active.attempt);
+});
