@@ -1,0 +1,38 @@
+{
+  "name": "core-the-descent",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "db:seed": "tsx scripts/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "drizzle-orm": "^0.44.7",
+    "better-sqlite3": "^12.4.1",
+    "motion": "^12.23.24",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "tailwindcss": "^4.1.17",
+    "@tailwindcss/postcss": "^4.1.17",
+    "tsx": "^4.20.6",
+    "vitest": "^3.2.4",
+    "@playwright/test": "^1.56.1"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}
